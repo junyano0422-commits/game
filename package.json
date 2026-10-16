@@ -1,13 +1,40 @@
 {
-  "name": "tower-board",
-  "version": "1.0.0",
+  "name": "small-worlds",
+  "version": "0.2.0",
   "private": true,
-  "description": "タワマン理事長！ ブラウザ運営シミュレーション",
+  "type": "module",
+  "description": "設定から育てるブラウザゲームの開発基盤",
   "scripts": {
-    "test": "node --test tests/simulation.test.cjs",
-    "test:ui": "node tests/ui-smoke.cjs"
+    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:legacy",
+    "test:unit": "vitest run",
+    "test:legacy": "node --test tests/simulation.test.cjs && node tests/ui-smoke.cjs",
+    "test:ui": "node tests/ui-smoke.cjs",
+    "test:e2e": "playwright test",
+    "check": "npm run build && npm test && npm run test:e2e",
+    "format": "prettier --write src e2e *.ts *.json *.jsonc index.html public/404.html README.md docs .github .prettierrc.json",
+    "format:check": "prettier --check src e2e *.ts *.json *.jsonc index.html public/404.html README.md docs .github .prettierrc.json"
   },
   "engines": {
-    "node": ">=18"
+    "node": "^24.0.0"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
   }
 }

@@ -4,3 +4,8 @@ Thumbs.db
 *.zip
 .env
 .env.*
+build/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo

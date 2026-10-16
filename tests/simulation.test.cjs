@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const E=require('../dist/engine.js');
+const E=require('../public/legacy/engine.js');
 const afford=(s,c)=>!c.cost||s[c.fund]>=E.quote(s,c);
 function advance(s){E.nextYear(s);if(s.phase==='assembly')E.chooseDirection(s,E.CAMPAIGN_DATA.directions[s.year][0].id)}
 function closeYear(s){E.beginYear(s);if(s.phase==='repair')E.chooseRepair(s,'standard');let e=E.currentEvent(s);let i=e.choices.findIndex(c=>afford(s,c));assert(i>=0);E.chooseEvent(s,i)}

@@ -1,0 +1,8 @@
+node_modules/
+build/
+public/legacy/
+tests/
+docs/legacy-source.md
+package-lock.json
+test-results/
+playwright-report/

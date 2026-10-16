@@ -1,0 +1,484 @@
+{
+  "id": "island-town",
+  "version": 1,
+  "title": "島のまちづくり",
+  "subtitle": "海の向こうに、暮らしを育てる。",
+  "description": "小さな島の世話役に。人が集まり、長く住みたくなるまちを育てよう。",
+  "setting": "海辺の小さな島 / 架空のまち",
+  "theme": "island",
+  "metrics": {
+    "funds": {
+      "label": "運営資金",
+      "unit": "万円",
+      "initial": 65,
+      "min": 0,
+      "max": 500
+    },
+    "assets": {
+      "label": "まちの価値",
+      "unit": "pt",
+      "initial": 100,
+      "min": 0,
+      "max": 300
+    },
+    "population": {
+      "label": "島の人口",
+      "unit": "人",
+      "initial": 120,
+      "min": 0,
+      "max": 1000
+    },
+    "satisfaction": {
+      "label": "暮らしの満足",
+      "unit": "%",
+      "initial": 62,
+      "min": 0,
+      "max": 100
+    },
+    "resilience": {
+      "label": "未来への備え",
+      "unit": "%",
+      "initial": 48,
+      "min": 0,
+      "max": 100
+    }
+  },
+  "modes": {
+    "quick": {
+      "label": "5分でひと旅",
+      "turns": 10,
+      "duration": "約5分"
+    },
+    "full": {
+      "label": "じっくり育てる",
+      "turns": 24,
+      "duration": "約15分"
+    }
+  },
+  "economy": {
+    "funds": 3,
+    "satisfaction": -1,
+    "resilience": -2,
+    "population": 1
+  },
+  "market": {
+    "metric": "assets",
+    "shocks": [-3, -1, 0, 1, 3]
+  },
+  "repetition": {
+    "threshold": 3,
+    "factor": 0.4,
+    "satisfactionCost": 2
+  },
+  "failure": [
+    {
+      "metric": "funds",
+      "atOrBelow": 0,
+      "message": "運営資金が尽き、次の世代へ運営を引き継ぎました。"
+    },
+    {
+      "metric": "satisfaction",
+      "atOrBelow": 10,
+      "message": "暮らしへの信頼が薄れ、役目を次の人に託しました。"
+    }
+  ],
+  "events": [
+    {
+      "id": "commons",
+      "title": "みんなの居場所をつくるには？",
+      "body": "島民から、顔を合わせる場所がほしいという声が届きました。人と人がつながる場所は、すぐには数字に表れません。",
+      "category": "暮らし",
+      "choices": [
+        {
+          "id": "gather",
+          "label": "小さな交流会を開く",
+          "description": "今の暮らしに投資。のちの協力につながります。",
+          "strategy": "people",
+          "effects": {
+            "funds": -7,
+            "satisfaction": 9,
+            "population": 3
+          },
+          "outcome": "島民同士の会話が生まれました。顔の見える関係は、未来の相談を変えていきます。",
+          "flags": ["community"]
+        },
+        {
+          "id": "rent",
+          "label": "空きスペースを貸し出す",
+          "description": "資金を確保。暮らしへの投資は次の機会に。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 6,
+            "assets": 1
+          },
+          "outcome": "収入の道筋がひとつ増えました。設備と人への配慮も忘れずに。"
+        },
+        {
+          "id": "renew",
+          "label": "居場所を長く使える形に整える",
+          "description": "今は支出。2年後に整備の効果が表れます。",
+          "strategy": "future",
+          "effects": {
+            "funds": -11,
+            "resilience": 5,
+            "assets": 3
+          },
+          "outcome": "整備が始まりました。すぐに結果を急がず、次の世代に使える場所をつくります。",
+          "flags": ["commons-ready"],
+          "delayed": {
+            "after": 2,
+            "effects": {
+              "assets": 5,
+              "satisfaction": 3
+            },
+            "message": "2年前に整えた居場所が定着し、暮らしと資産に良い変化が生まれました。"
+          }
+        }
+      ]
+    },
+    {
+      "id": "energy",
+      "title": "風と太陽を味方に。",
+      "body": "電気の使い方を見直す提案です。目先の節約と長く続く仕組み、どちらに力を注ぎますか？",
+      "category": "設備",
+      "choices": [
+        {
+          "id": "listen",
+          "label": "使う人と節電ルールを決める",
+          "description": "対話を通じて、納得できるルールに。",
+          "strategy": "people",
+          "effects": {
+            "funds": -3,
+            "satisfaction": 6,
+            "resilience": 2
+          },
+          "outcome": "自分たちで決めたルールに、協力の輪が広がります。",
+          "flags": ["community"]
+        },
+        {
+          "id": "contract",
+          "label": "契約を見直して資金を守る",
+          "description": "支出を増やさず、余裕をつくります。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 5
+          },
+          "outcome": "契約の整理で運営に余裕が生まれました。設備そのものの年数は変わりません。"
+        },
+        {
+          "id": "solar",
+          "label": "省エネ設備を導入する",
+          "description": "先行投資。2年後に運営資金が戻ります。",
+          "strategy": "future",
+          "effects": {
+            "funds": -13,
+            "assets": 4,
+            "resilience": 6
+          },
+          "outcome": "工事が始まりました。性能を確かめられるのは、少し先です。",
+          "flags": ["eco"],
+          "delayed": {
+            "after": 2,
+            "effects": {
+              "funds": 9,
+              "assets": 4
+            },
+            "message": "省エネ設備が稼働し、節約分が運営資金に戻ってきました。"
+          }
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "title": "嵐への備え、どう進める？",
+      "body": "毎日の安心は、目立たない積み重ね。資金には限りがありますが、備えを後回しにし続けることもできません。",
+      "category": "備え",
+      "choices": [
+        {
+          "id": "drill",
+          "label": "みんなで避難訓練をする",
+          "description": "参加する人を増やし、信頼と備えを育てる。",
+          "strategy": "people",
+          "effects": {
+            "funds": -5,
+            "satisfaction": 5,
+            "resilience": 4
+          },
+          "outcome": "顔を見ながら避難経路を確認しました。助け合う相手が見えるようになりました。",
+          "flags": ["community"]
+        },
+        {
+          "id": "inventory",
+          "label": "備蓄の在庫を整理する",
+          "description": "まずは現状を把握。支出を抑えて進めます。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 3,
+            "resilience": 1
+          },
+          "outcome": "使える物を見つけ、無駄な買い足しを防ぎました。大きな設備の更新は残っています。"
+        },
+        {
+          "id": "backup",
+          "label": "非常用設備を更新する",
+          "description": "長く使うインフラに投資します。",
+          "strategy": "future",
+          "effects": {
+            "funds": -12,
+            "resilience": 10,
+            "assets": 3
+          },
+          "outcome": "停電に備える設備が整いました。目には見えにくくても、安心の土台になります。",
+          "flags": ["prepared"]
+        }
+      ]
+    },
+    {
+      "id": "arrival",
+      "title": "島で暮らしたい家族が来ました。",
+      "body": "住み替えを考えている家族から相談です。ここでの暮らしを選んでもらうため、何を伝えましょう。",
+      "category": "人の流れ",
+      "choices": [
+        {
+          "id": "welcome",
+          "label": "暮らしを案内する会を開く",
+          "description": "人を迎える体験を大切に。",
+          "strategy": "people",
+          "effects": {
+            "funds": -4,
+            "population": 8,
+            "satisfaction": 5
+          },
+          "outcome": "暮らしの雰囲気が伝わり、新しい家族が加わりました。",
+          "flags": ["community"]
+        },
+        {
+          "id": "listing",
+          "label": "今ある魅力を丁寧に紹介する",
+          "description": "費用をかけず、無理のない案内を。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 2,
+            "population": 2
+          },
+          "outcome": "ありのままの魅力を伝えました。小さくても、着実な一歩です。"
+        },
+        {
+          "id": "access",
+          "label": "共用の動線を整える",
+          "description": "将来の暮らしやすさも考えて投資。",
+          "strategy": "future",
+          "effects": {
+            "funds": -10,
+            "assets": 5,
+            "resilience": 3,
+            "population": 4
+          },
+          "outcome": "使いやすくなった道が、今の暮らしにもこれからの暮らしにも役立ちます。"
+        }
+      ]
+    },
+    {
+      "id": "maintenance",
+      "title": "港の点検、どう進める？",
+      "body": "日常を支える設備に、少しずつ年数が積み重なっています。大きな故障になる前に、次の一手を。",
+      "category": "メンテナンス",
+      "choices": [
+        {
+          "id": "explain",
+          "label": "使う人に説明し、部分修繕する",
+          "description": "納得を得ながら、小さく直します。",
+          "strategy": "people",
+          "effects": {
+            "funds": -6,
+            "satisfaction": 6,
+            "resilience": 3
+          },
+          "outcome": "工事の理由が伝わり、協力してもらえました。"
+        },
+        {
+          "id": "audit",
+          "label": "専門家に見積もりを相談する",
+          "description": "今すぐの工事を避け、優先順位を整理。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 2,
+            "resilience": 1
+          },
+          "outcome": "支出の優先順位が見えました。先送りした部分は、いずれ向き合う必要があります。"
+        },
+        {
+          "id": "replace",
+          "label": "長く使える部品に交換する",
+          "description": "資金を使い、安心と価値を守ります。",
+          "strategy": "future",
+          "effects": {
+            "funds": -11,
+            "resilience": 8,
+            "assets": 4
+          },
+          "outcome": "次の点検まで安心して使える設備が増えました。"
+        }
+      ]
+    },
+    {
+      "id": "cooperation",
+      "title": "あの日の交流が、力になりました。",
+      "body": "以前につくったつながりをきっかけに、島民が共同活動を提案してくれました。過去の決断が、新しい選択肢を開いています。",
+      "category": "過去の決断から",
+      "choices": [
+        {
+          "id": "volunteer",
+          "label": "自主活動を後押しする",
+          "description": "育ったつながりを、次の世代へ。",
+          "strategy": "people",
+          "effects": {
+            "funds": -3,
+            "satisfaction": 12,
+            "population": 5
+          },
+          "outcome": "自分たちの場所を、自分たちで育てる。そんな気持ちが広がりました。"
+        },
+        {
+          "id": "fundraise",
+          "label": "共同活動の寄付を募る",
+          "description": "無理のない協力で、活動を支えます。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 8,
+            "satisfaction": 2
+          },
+          "outcome": "信頼を土台に、活動の資金が集まりました。"
+        },
+        {
+          "id": "hub",
+          "label": "活動拠点を整える",
+          "description": "このつながりを、長く続くものに。",
+          "strategy": "future",
+          "effects": {
+            "funds": -8,
+            "assets": 7,
+            "resilience": 4
+          },
+          "outcome": "集まる理由と場所がそろいました。未来への、小さな約束です。"
+        }
+      ],
+      "requires": ["community"],
+      "minTurn": 3,
+      "priority": true,
+      "maxOccurrences": 1
+    },
+    {
+      "id": "eco-return",
+      "title": "省エネ投資の、その後。",
+      "body": "以前に導入した設備のデータが届きました。電気の使い方にも変化が生まれています。育てた仕組みを、次はどう生かしますか？",
+      "category": "過去の決断から",
+      "choices": [
+        {
+          "id": "open-data",
+          "label": "成果を共有して参加を募る",
+          "description": "設備と人の協力を組み合わせます。",
+          "strategy": "people",
+          "effects": {
+            "funds": -2,
+            "satisfaction": 9,
+            "resilience": 3
+          },
+          "outcome": "数字だけでなく、協力してくれた人の実感も共有できました。"
+        },
+        {
+          "id": "reinvest",
+          "label": "節約分を備えに回す",
+          "description": "過去の投資を、次の余裕に変えます。",
+          "strategy": "finance",
+          "effects": {
+            "funds": 9,
+            "assets": 2
+          },
+          "outcome": "前の決断が、今の選択の余裕をつくりました。"
+        },
+        {
+          "id": "expand",
+          "label": "省エネの仕組みを広げる",
+          "description": "実績をもとに、次の投資へ。",
+          "strategy": "future",
+          "effects": {
+            "funds": -9,
+            "resilience": 8,
+            "assets": 7
+          },
+          "outcome": "試して確かめた仕組みが、まち全体に広がります。"
+        }
+      ],
+      "requires": ["eco"],
+      "minTurn": 4,
+      "priority": true,
+      "maxOccurrences": 1
+    },
+    {
+      "id": "storm",
+      "title": "強い風が、島に近づいています。",
+      "body": "備えが少ない今、天候への不安が広がっています。これまでの整備のペースが、目の前の議題に影響しています。",
+      "category": "備えの不足",
+      "choices": [
+        {
+          "id": "check-in",
+          "label": "一人ひとりの様子を確認する",
+          "description": "対話で不安を和らげ、避難を確認。",
+          "strategy": "people",
+          "effects": {
+            "funds": -5,
+            "satisfaction": 6,
+            "resilience": 3
+          },
+          "outcome": "声をかける相手が見つかり、不安が少し和らぎました。"
+        },
+        {
+          "id": "plan",
+          "label": "使える備品を確認する",
+          "description": "今ある物でできる準備をします。",
+          "strategy": "finance",
+          "effects": {
+            "resilience": 2
+          },
+          "outcome": "限られた備品で、必要な場所を優先しました。"
+        },
+        {
+          "id": "reinforce",
+          "label": "緊急の補強をする",
+          "description": "余裕資金を使い、備えを立て直します。",
+          "strategy": "future",
+          "effects": {
+            "funds": -14,
+            "resilience": 14
+          },
+          "outcome": "手痛い支出ですが、次の天候への備えが整いました。"
+        }
+      ],
+      "when": {
+        "metric": "resilience",
+        "max": 35
+      },
+      "minTurn": 3,
+      "weight": 4
+    }
+  ],
+  "diagnoses": {
+    "balanced": {
+      "title": "未来を編む調整役",
+      "body": "声を聴き、数字を確かめ、先の世代を想像する。ひとつの正解に頼らず、状況に合わせて決めたあなた。異なる願いを、ひとつの未来へ編む力があります。"
+    },
+    "people": {
+      "title": "つながりを育てる伴走者",
+      "body": "数字に表れない声にも、あなたは耳を傾けました。人が人を支える場面を信じる決断が、暮らしの土台に。次は、そのつながりを長く守る仕組みにも目を向けてみて。"
+    },
+    "finance": {
+      "title": "余白をつくる現実派",
+      "body": "限られた資金から、次の選択の余地を生み出したあなた。地に足のついた判断が得意です。その余裕をいつ人や設備に託すかで、未来の景色はもっと変わります。"
+    },
+    "future": {
+      "title": "まだ見ぬ景色の設計者",
+      "body": "すぐに報われなくても、先の安心に手を伸ばしたあなた。今の支出を未来への約束に変える人です。歩みを共にする人の声にも耳を傾ければ、その構想はもっと強くなります。"
+    }
+  }
+}

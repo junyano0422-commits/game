@@ -1,5 +1,5 @@
 {
   "static": {
-    "directory": "dist"
+    "directory": "build"
   }
 }
