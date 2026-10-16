@@ -1,17 +1,13 @@
 {
-  "name": "game",
-  "version": "0.1.0",
+  "name": "tower-board",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "engines": { "node": "^24.0.0" },
+  "description": "タワマン理事長！ ブラウザ運営シミュレーション",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
-    "test": "playwright test"
+    "test": "node --test tests/simulation.test.cjs",
+    "test:ui": "node tests/ui-smoke.cjs"
   },
-  "devDependencies": {
-    "@playwright/test": "1.64.1",
-    "vite": "8.3.4"
+  "engines": {
+    "node": ">=18"
   }
 }
