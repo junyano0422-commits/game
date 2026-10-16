@@ -1,0 +1,28 @@
+:root { font-family: system-ui, -apple-system, sans-serif; color: #edf1ff; background: #11182c; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 280px; min-height: 100vh; background: radial-gradient(ellipse at 50% 5%, #25355a 0, #11182c 65%); }
+button { font: inherit; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
+[hidden] { display: none !important; }
+.game { width: min(100% - 40px, 600px); margin: auto; padding: 42px 0 24px; }
+header { text-align: center; }
+.eyebrow { color: #a6b8de; font-size: 10px; letter-spacing: .28em; }
+h1 { margin: 12px 0 8px; font-size: clamp(42px, 10vw, 64px); letter-spacing: -.055em; font-weight: 900; }
+h1 span { color: #c4f582; }
+.intro, .hint { color: #b5c1db; font-size: 13px; line-height: 1.8; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px 0 18px; }
+.stats > div { padding: 14px 8px; text-align: center; border: 1px solid #38455f; border-radius: 16px; background: #1e2941; }
+.stats > div > span { display: block; color: #b5c1db; font-size: 12px; }
+.stats strong { display: block; margin-top: 5px; font-size: 30px; font-variant-numeric: tabular-nums; }
+.stats small { margin-left: 4px; font-size: 12px; font-weight: 400; }
+.board { position: relative; height: clamp(240px, 42vh, 360px); border: 1px solid #405270; border-radius: 22px; background-color: #18233c; background-image: radial-gradient(#3b4d6a 1px, transparent 1px); background-size: 24px 24px; }
+#message { position: absolute; inset: 0; display: grid; align-content: center; margin: 24px; text-align: center; font-size: 22px; font-weight: 700; line-height: 1.8; }
+#message span { font-size: 13px; font-weight: 400; color: #b5c1db; }
+#target { position: absolute; width: 64px; height: 64px; padding: 0; border: none; border-radius: 50%; color: #17203a; background: #c4f582; box-shadow: 0 0 26px #c4f58230; font-size: 38px; line-height: 1; }
+#target:active { background: #e1ffc0; }
+.start { width: 100%; margin-top: 18px; padding: 17px 24px; display: flex; justify-content: space-between; border: 0; border-radius: 14px; background: #c4f582; color: #17203a; font-weight: 700; }
+.start:hover { background: #d5ffa0; }
+.start:disabled { background: #2c3b50; color: #afbed6; cursor: default; }
+.hint { text-align: center; font-size: 11px; }
+footer { text-align: center; color: #8193b5; font-size: 11px; padding-top: 20px; }
+@media (max-width: 400px) { .game { width: calc(100% - 28px); padding-top: 24px; } .stats { gap: 8px; } }
