@@ -144,6 +144,10 @@ describe('configuration and pure game engine', () => {
     expect(text).toContain(diagnosis(defaultGame, social).title);
     expect(text).toContain('?game=tower-lab');
     expect(text).not.toContain('seed');
+    const offlineText = shareText(defaultGame, social, 'null');
+    expect(offlineText).toContain(diagnosis(defaultGame, social).title);
+    expect(offlineText).not.toContain('null');
+    expect(offlineText).not.toContain('http');
   });
 
   it('ends early with a readable reason when an essential resource collapses', () => {

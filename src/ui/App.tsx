@@ -86,9 +86,11 @@ export function App() {
     setNotice(result.kind === 'error' ? result.message : '');
     setLoadFailed(result.kind === 'error');
     setSaved(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set('game', next.id);
-    window.history.replaceState(null, '', url);
+    if (window.location.protocol === 'https:' || window.location.protocol === 'http:') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('game', next.id);
+      window.history.replaceState(null, '', url);
+    }
   }
 
   function startNew() {

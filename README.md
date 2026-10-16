@@ -26,6 +26,8 @@ npm run preview     # build/ をポート4173で配信
 
 まとめて検証する場合は `npm run check`。Playwright はクラウド環境にある `/usr/bin/chromium` を使います。それがない環境では `npx playwright install chromium`、Linuxでシステム依存も必要なら `npx playwright install --with-deps chromium` を先に実行してください。CI は Playwright 指定の Chromium を使います。
 
+`npm run build:demo` で、新作2本を単一HTMLにまとめた `build/small-worlds-demo.html` も作れます。配信サーバーやインストールなしで試すためのファイルです。保存が制限された閲覧環境では警告が出ます。オフラインの結果共有には公開URLを含めません。原作版へのリンクは既存の公開サイトを開きます。
+
 ## 構成
 
 | 場所                       | 役割                                                 |

@@ -205,7 +205,12 @@ export function score(game: GameDefinition, run: Run): number {
 
 export function shareText(game: GameDefinition, run: Run, origin: string): string {
   if (run.phase !== 'finished') throw new Error('Results are not ready');
-  const url = new URL('/', origin);
-  url.searchParams.set('game', game.id);
-  return `${game.title}｜${game.modes[run.mode].label}\n${run.history.length}回の決断で「${diagnosis(game, run).title}」になりました。\n未来スコア ${score(game, run)}/100\n#SmallWorlds\n${url.toString()}`;
+  let link = '';
+  // A downloaded HTML file has an opaque ("null") origin and no public game URL.
+  if (/^https?:\/\//.test(origin)) {
+    const url = new URL('/', origin);
+    url.searchParams.set('game', game.id);
+    link = `\n${url.toString()}`;
+  }
+  return `${game.title}｜${game.modes[run.mode].label}\n${run.history.length}回の決断で「${diagnosis(game, run).title}」になりました。\n未来スコア ${score(game, run)}/100\n#SmallWorlds${link}`;
 }
