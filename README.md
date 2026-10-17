@@ -63,7 +63,7 @@ npm run preview     # build/ をポート4173で配信
 
 ビルドコマンドは `npm run build`、出力先は **`build`** です。原作版も同じビルドに含まれます。`wrangler.jsonc` と `public/_headers` を用意しています。
 
-**本番公開は人間の明示的な承認後に実行します。** CIは公開しません。自動公開を避けるには Cloudflare Pages の Direct Upload プロジェクトを使います。[公開手順](docs/deployment.md) に設定と確認事項をまとめています。
+**本番公開は人間の明示的な承認後に実行します。** 通常のCIでは公開しません。Cloudflare Pagesの設定は [公開手順](docs/deployment.md) にまとめています。追加登録を避ける場合は、既存のGitHubアカウントで使える [GitHub Pagesの手動公開](docs/github-pages.md) も用意しています。
 
 ## プライバシーと既存版
 

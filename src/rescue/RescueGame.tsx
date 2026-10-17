@@ -82,7 +82,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
 
   async function share(copy = false) {
     if (!run) return;
-    const text = rescueShare(run, window.location.origin);
+    const text = rescueShare(run, window.location.href);
     try {
       if (!copy && navigator.share) await navigator.share({ title: config.title, text });
       else if (navigator.clipboard?.writeText) {
@@ -559,7 +559,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                   <textarea
                     aria-label="救出結果の共有テキスト"
                     readOnly
-                    value={rescueShare(current, window.location.origin)}
+                    value={rescueShare(current, window.location.href)}
                     rows={5}
                     onFocus={(e) => e.currentTarget.select()}
                   />

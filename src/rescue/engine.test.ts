@@ -180,6 +180,10 @@ describe('rescues can be saved, diagnosed and shared', () => {
     expect(text).toContain('game=last-elevator');
     expect(text).toContain(rescueResult(run).title);
     expect(rescueShare(run, 'null')).not.toContain('http');
+    expect(rescueShare(run, 'https://example.github.io/game/?old=1#results')).toContain(
+      'https://example.github.io/game/?game=last-elevator',
+    );
+    expect(rescueShare(run, 'file:///downloads/last-elevator.html')).not.toContain('file:');
     expect(text).not.toContain('seed');
   });
 });

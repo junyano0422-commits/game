@@ -10,7 +10,7 @@
 4. 人間に変更内容・テスト結果・公開先・影響を提示し、**本番公開の明示的な承認を得る**
 5. Cloudflare Pages の **Direct Upload** プロジェクトを作成し、実際のプロジェクト名に `wrangler.jsonc` の `name` を合わせる
 
-Git連携による自動本番公開は、この承認手順を飛ばさないよう無効にしてください。GitHub Actionsは検証と成果物保存までです。Cloudflareの認証情報はGitやチャットに保存せず、Cloudflareのログインや適切に制限したCIシークレットを利用します。
+Git連携による自動本番公開は、この承認手順を飛ばさないよう無効にしてください。通常のGitHub Actions（ci.yml）は検証と成果物保存までです。別途GitHub Pages用の手動公開ワークフローもありますが、Pushでは実行されません。Cloudflareの認証情報はGitやチャットに保存せず、Cloudflareのログインや適切に制限したCIシークレットを利用します。
 
 ## 承認後の公開
 

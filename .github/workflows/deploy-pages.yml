@@ -1,0 +1,59 @@
+name: Publish Last Elevator (manual approval)
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Reviewed branch or commit to publish'
+        required: true
+        default: feat/browser-game-platform
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: last-elevator-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.revision }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run format:check
+      - run: npm run check
+      - run: node scripts/build-demo.mjs
+      - name: Prepare the reviewed, self-contained game
+        run: |
+          mkdir -p "$RUNNER_TEMP/last-elevator-site"
+          cp build/last-elevator.html "$RUNNER_TEMP/last-elevator-site/index.html"
+          touch "$RUNNER_TEMP/last-elevator-site/.nojekyll"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/last-elevator-site
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Publish the approved game
+        id: deployment
+        uses: actions/deploy-pages@v4
+# No push or pull_request trigger: publication requires a deliberate manual run.

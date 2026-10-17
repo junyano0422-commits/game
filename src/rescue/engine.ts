@@ -269,10 +269,15 @@ export function dailyRescueSeed(date: Date): number {
   return [...day].reduce((hash, c) => (Math.imul(hash, 31) + c.charCodeAt(0)) >>> 0, 7) || 1;
 }
 
-export function rescueShare(run: RescueRun, origin: string) {
+export function rescueShare(run: RescueRun, siteUrl: string) {
   const result = rescueResult(run);
-  const link = /^https?:\/\//.test(origin)
-    ? `\n${new URL('/?game=last-elevator', origin).href}`
-    : '';
+  let link = '';
+  if (/^https?:\/\//.test(siteUrl)) {
+    const url = new URL(siteUrl);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('game', 'last-elevator');
+    link = `\n${url.href}`;
+  }
   return `ラスト・エレベーター｜${config.modes[run.mode].label}\n${result.count}/${result.total}人を救出！ RANK ${result.rank} / ${result.score}pt\n「${result.title}」\n#ラストエレベーター${link}`;
 }
