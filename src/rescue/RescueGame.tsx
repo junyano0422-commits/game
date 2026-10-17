@@ -3,19 +3,28 @@ import { rescueConfig as config } from './config';
 import {
   cabin,
   countPeople,
-  createRescue,
   dailyRescueSeed,
-  decodeRescue,
-  encodeRescue,
   forecast,
-  moveElevator,
-  previewRoute,
-  rescueResult,
   rescueSaveKey,
-  rescueShare,
   savedPeople,
 } from './engine';
-import type { RescueMode, RescueRun, TravelMode } from './engine';
+import type { RescueMode, TravelMode } from './engine';
+import {
+  answerConsultation,
+  consultation,
+  contractProgress,
+  contracts,
+  isAdventure,
+  residentMemories,
+  createAdventure as createRescue,
+  decodePlaySave as decodeRescue,
+  encodePlaySave as encodeRescue,
+  playMove as moveElevator,
+  playPreview as previewRoute,
+  adventureResult as rescueResult,
+  adventureShare as rescueShare,
+} from './adventure';
+import type { PlayRun as RescueRun, ContractId } from './adventure';
 import './rescue.css';
 
 function initialSave() {
@@ -39,12 +48,16 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
   const [run, setRun] = useState<RescueRun | null>(initial.run);
   const [playing, setPlaying] = useState(false);
   const [mode, setMode] = useState<RescueMode>('standard');
+  const [contract, setContract] = useState<ContractId>(() =>
+    initial.run && isAdventure(initial.run) ? initial.run.contract : 'connections',
+  );
   const [travel, setTravel] = useState<TravelMode>('normal');
   const [target, setTarget] = useState(3);
   const [notice, setNotice] = useState(initial.problem);
   const [canSave, setCanSave] = useState(true);
   const [help, setHelp] = useState(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const consultationHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const previous = document.title;
@@ -73,7 +86,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
     const seed = random
       ? crypto.getRandomValues(new Uint32Array(1))[0] || 1
       : dailyRescueSeed(new Date());
-    setRun(createRescue(seed, mode));
+    setRun(createRescue(seed, mode, contract));
     setPlaying(true);
     setTarget(3);
     setTravel('normal');
@@ -98,7 +111,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
     }
   }
 
-  const current = run ?? createRescue(dailyRescueSeed(new Date()), mode);
+  const current = run ?? createRescue(dailyRescueSeed(new Date()), mode, contract);
   const settings = config.modes[current.mode];
   const passengers = cabin(current);
   const onBoard = countPeople(passengers);
@@ -107,6 +120,15 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
   const event = forecast(current);
   const result = rescueResult(current);
   const remaining = settings.turns - current.turn;
+  const objective = isAdventure(current) ? contractProgress(current) : null;
+  const question = consultation(current);
+  const memories = residentMemories(current);
+  useEffect(() => {
+    if (playing && question) {
+      consultationHeading.current?.focus({ preventScroll: true });
+      consultationHeading.current?.scrollIntoView({ block: 'center' });
+    }
+  }, [playing, question?.id]);
 
   return (
     <div className="rescue-app">
@@ -142,7 +164,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
               <div className="rescue-intro-labels">
                 <span>約3分</span>
                 <span>タップだけ</span>
-                <span>時間制限なし</span>
+                <span>NEW / 無線の相談</span>
               </div>
               <fieldset className="rescue-mode">
                 <legend>救出プラン</legend>
@@ -163,6 +185,31 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                   </label>
                 ))}
               </fieldset>
+              <fieldset className="rescue-contract-picker">
+                <legend>今回、どんな救出を目指す？</legend>
+                {contracts.map((item) => (
+                  <label key={item.id} className={contract === item.id ? 'selected' : ''}>
+                    <input
+                      type="radio"
+                      name="rescue-contract"
+                      checked={contract === item.id}
+                      onChange={() => setContract(item.id)}
+                    />
+                    <span>
+                      <b>
+                        {item.icon} {item.title}
+                      </b>
+                      <small>{item.description}</small>
+                    </span>
+                    <em>＋{item.reward}</em>
+                  </label>
+                ))}
+              </fieldset>
+              {run && !isAdventure(run) && (
+                <p className="rescue-classic-note">
+                  前回の続きは同じルールで再開できます。新しく始めると、相談イベントと選べる目標が加わります。
+                </p>
+              )}
               {run && (
                 <button
                   className="rescue-primary"
@@ -259,6 +306,53 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
               <p className="rescue-warning" role="alert">
                 保存できません。画面を閉じると救出の進行が失われます。
               </p>
+            )}
+            {objective && (
+              <section
+                className={`rescue-contract-progress ${objective.complete ? 'complete' : ''}`}
+                aria-label="今回の救出目標"
+              >
+                <span>{objective.icon}</span>
+                <div>
+                  <small>{objective.complete ? '目標達成！' : '今回の目標'}</small>
+                  <strong>{objective.title}</strong>
+                  <p>{objective.description}</p>
+                </div>
+                <b>
+                  {Math.min(objective.progress, objective.target)} / {objective.target}
+                  <small>＋{objective.reward}pt</small>
+                </b>
+              </section>
+            )}
+            {question && (
+              <section className="rescue-consultation" aria-labelledby="rescue-consultation-title">
+                <p className="rescue-kicker">INCOMING CALL / {question.from}</p>
+                <h2 ref={consultationHeading} tabIndex={-1} id="rescue-consultation-title">
+                  {question.title}
+                </h2>
+                <p>{question.body}</p>
+                <div>
+                  {question.choices.map((choice) => (
+                    <button
+                      key={choice.id}
+                      data-consultation={choice.id}
+                      disabled={choice.disabled}
+                      onClick={() => {
+                        if (isAdventure(current)) {
+                          setRun(answerConsultation(current, choice.id));
+                          setNotice('');
+                        }
+                      }}
+                    >
+                      <strong>{choice.label}</strong>
+                      <span>{choice.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                <small>
+                  返答するまでエレベーターは待機します。効果を見て、次の作戦を決めよう。
+                </small>
+              </section>
             )}
             {!current.finished ? (
               <div className="rescue-play-layout">
@@ -385,6 +479,13 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                       </strong>
                     )}
                   </div>
+                  {current.floor === 0 && current.lastBonus > 0 && memories.at(-1) && (
+                    <aside className="rescue-memory-inline">
+                      <span>避難所に届いた、小さな続き</span>
+                      <h3>{memories.at(-1)!.title}</h3>
+                      <p>{memories.at(-1)!.body}</p>
+                    </aside>
+                  )}
                   {event && <p className="rescue-forecast">次の移動の予告：{event.title}</p>}
                   {!route.available &&
                     travel === 'normal' &&
@@ -459,7 +560,7 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                     )}
                   </div>
                   <button
-                    className="rescue-primary rescue-go"
+                    className={`rescue-primary rescue-go ${question ? 'rescue-awaiting-answer' : ''}`}
                     disabled={!route.available}
                     onClick={() => {
                       const next = moveElevator(current, target, travel);
@@ -511,6 +612,19 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                 <p className="rescue-result-score">
                   {result.score.toLocaleString()} <small>POINTS</small>
                 </p>
+                {result.goal && (
+                  <div className={`rescue-result-goal ${result.goal.complete ? 'complete' : ''}`}>
+                    <span>
+                      {result.goal.complete ? '今回の目標を達成！' : '今回の目標は、次の挑戦へ'}
+                    </span>
+                    <strong>{result.goal.title}</strong>
+                    <p>
+                      {Math.min(result.goal.progress, result.goal.target)} / {result.goal.target}
+                      {result.goal.complete ? ` · ボーナス＋${result.goal.reward}pt` : ''}
+                    </p>
+                    {result.rooftop && <p>写真部との約束も達成 · ＋220pt</p>}
+                  </div>
+                )}
                 <div className="rescue-result-diagnosis">
                   <span>あなたの救出タイプ</span>
                   <h3>{result.title}</h3>
@@ -554,6 +668,17 @@ export function RescueGame({ onExit }: { onExit: () => void }) {
                     別の配置で挑戦する
                   </button>
                 </div>
+                {memories.length > 0 && (
+                  <section className="rescue-memories" aria-label="救出した住民のその後">
+                    <h3>あなたが変えた、3分後。</h3>
+                    {memories.map((memory) => (
+                      <article key={memory.id}>
+                        <h4>{memory.title}</h4>
+                        <p>{memory.body}</p>
+                      </article>
+                    ))}
+                  </section>
+                )}
                 <details className="rescue-share-text">
                   <summary>共有用テキスト</summary>
                   <textarea

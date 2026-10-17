@@ -127,7 +127,7 @@ export function previewRoute(run: RescueRun, floor: number, travel: TravelMode =
   };
 }
 
-function hasNextMove(run: RescueRun) {
+export function hasNextMove(run: RescueRun) {
   for (let floor = 0; floor <= config.floors; floor++) {
     if (previewRoute(run, floor, 'normal').available || previewRoute(run, floor, 'eco').available)
       return true;
