@@ -49,7 +49,7 @@ function EffectsList({ game, effects }: { game: GameDefinition; effects: Effects
   );
 }
 
-export function App() {
+export function App({ onPlayRescue }: { onPlayRescue: () => void }) {
   const [game, setGame] = useState(() =>
     gameById(new URLSearchParams(window.location.search).get('game')),
   );
@@ -182,6 +182,17 @@ export function App() {
               <Scene theme={game.theme} />
             </section>
 
+            <button className="rescue-library-banner" onClick={onPlayRescue}>
+              <span className="rescue-banner-icon" aria-hidden="true">
+                ↑<small>LAST LIFT</small>
+              </span>
+              <span>
+                <small>NEW / 3分レスキュー</small>
+                <strong>ラスト・エレベーター</strong>
+                <span>最後の1席に、誰を乗せる？ 停電タワーでルートを考える救出ゲーム。</span>
+              </span>
+              <b aria-hidden="true">↗</b>
+            </button>
             <section className="library" aria-labelledby="library-title">
               <div className="section-heading">
                 <div>
