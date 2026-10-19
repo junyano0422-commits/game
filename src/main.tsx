@@ -2,28 +2,33 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App';
 import './ui/styles.css';
+import { StallGame } from './stall/StallGame';
 import { RescueGame } from './rescue/RescueGame';
 
 function Root() {
-  const [rescue, setRescue] = useState(
-    () =>
-      new URLSearchParams(window.location.search).get('game') === 'last-elevator' ||
-      document.documentElement.dataset.game === 'last-elevator',
-  );
-  function navigate(open: boolean) {
+  const [game, setGame] = useState(() => {
+    const query = new URLSearchParams(window.location.search).get('game');
+    return query ?? document.documentElement.dataset.game ?? '';
+  });
+  function navigate(next: string) {
     if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
       const url = new URL(window.location.href);
-      if (open) url.searchParams.set('game', 'last-elevator');
+      if (next) url.searchParams.set('game', next);
       else url.searchParams.delete('game');
       window.history.replaceState(null, '', url);
     }
-    setRescue(open);
+    setGame(next);
     window.scrollTo(0, 0);
   }
-  return rescue ? (
-    <RescueGame onExit={() => navigate(false)} />
+  return game === 'night-stall' ? (
+    <StallGame onExit={() => navigate('')} />
+  ) : game === 'last-elevator' ? (
+    <RescueGame onExit={() => navigate('')} />
   ) : (
-    <App onPlayRescue={() => navigate(true)} />
+    <App
+      onPlayRescue={() => navigate('last-elevator')}
+      onPlayStall={() => navigate('night-stall')}
+    />
   );
 }
 

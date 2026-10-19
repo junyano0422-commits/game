@@ -49,7 +49,13 @@ function EffectsList({ game, effects }: { game: GameDefinition; effects: Effects
   );
 }
 
-export function App({ onPlayRescue }: { onPlayRescue: () => void }) {
+export function App({
+  onPlayRescue,
+  onPlayStall,
+}: {
+  onPlayRescue: () => void;
+  onPlayStall: () => void;
+}) {
   const [game, setGame] = useState(() =>
     gameById(new URLSearchParams(window.location.search).get('game')),
   );
@@ -182,6 +188,17 @@ export function App({ onPlayRescue }: { onPlayRescue: () => void }) {
               <Scene theme={game.theme} />
             </section>
 
+            <button className="rescue-library-banner" onClick={onPlayStall}>
+              <span className="rescue-banner-icon" aria-hidden="true">
+                🍙
+              </span>
+              <span>
+                <small>NEW / こんがり屋台経営</small>
+                <strong>夜空のおにぎり屋台</strong>
+                <span>焼いて、出して、お店を育てよう。スマホで約3分。</span>
+              </span>
+              <b aria-hidden="true">→</b>
+            </button>
             <button className="rescue-library-banner" onClick={onPlayRescue}>
               <span className="rescue-banner-icon" aria-hidden="true">
                 ↑<small>LAST LIFT</small>

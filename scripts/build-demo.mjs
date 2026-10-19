@@ -27,3 +27,10 @@ await writeFile(
   html.replace('<html lang="ja">', '<html lang="ja" data-game="last-elevator">'),
 );
 console.log(`Rescue game demo: ${fileURLToPath(rescue)}`);
+
+const stall = new URL('night-stall.html', build);
+await writeFile(
+  stall,
+  html.replace('<html lang="ja">', '<html lang="ja" data-game="night-stall">'),
+);
+console.log(`Stall game demo: ${fileURLToPath(stall)}`);
