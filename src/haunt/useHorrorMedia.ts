@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { HorrorAudio, cueForTurn, mediaSettingsKey, readMediaSettings } from './audio';
+import { HorrorAudio, localJapaneseVoice, mediaSettingsKey, readMediaSettings } from './audio';
+import { audioEvent } from './soundtrack';
 import type { MediaSettings } from './audio';
 import type { NightRun } from './revised';
-import { isRevised, omen } from './revised';
 import { nightLimits, isSurvival, hunterClose } from './survival';
 export function useHorrorMedia(run: NightRun | null, playing: boolean) {
   const [settings, setSettings] = useState(readMediaSettings);
@@ -10,6 +10,14 @@ export function useHorrorMedia(run: NightRun | null, playing: boolean) {
   const [ready, setReady] = useState(false);
   const [paused, setPaused] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [voiceAvailable, setVoiceAvailable] = useState(false);
+  useEffect(() => {
+    const refresh = () => setVoiceAvailable(!!localJapaneseVoice());
+    refresh();
+    const speech = window.speechSynthesis;
+    speech?.addEventListener?.('voiceschanged', refresh);
+    return () => speech?.removeEventListener?.('voiceschanged', refresh);
+  }, []);
   const epoch = useRef(0);
   const heardKey = useRef('');
   const previous = useRef<NightRun | null>(null);
@@ -63,7 +71,6 @@ export function useHorrorMedia(run: NightRun | null, playing: boolean) {
     }
     setReady(ok);
     setFailed(!ok);
-    if (ok && !playing) audio.play('drip');
   }
   function update(next: MediaSettings) {
     setSettings(next);
@@ -91,34 +98,24 @@ export function useHorrorMedia(run: NightRun | null, playing: boolean) {
     else audio.quiet();
     const key = `${run.seed}-${run.mode}-${run.turn}-${run.phase}-${isSurvival(run) ? run.commands.length : run.actions.length}`;
     if (heardKey.current === key) return;
-    const before = previous.current;
-    const contact = before && isSurvival(before) && isSurvival(run) && run.health < before.health;
-    const cue = contact
-      ? 'impact'
-      : !before && run.turn > 0 && run.phase === 'play'
-        ? 'drip'
-        : cueForTurn(before, run);
-    audio.play(cue);
-    if (run.phase === 'play' && cue !== 'impact')
-      audio.play(
-        omen(run).id === 'steps' ? 'steps' : omen(run).id === 'eyes' ? 'static' : 'drip',
-        0.45,
-      );
-    if (run.phase === 'taken') audio.whisper('みつけた', settings.voice);
-    else if (run.phase === 'escaped') audio.whisper('もう、わすれないで', settings.voice);
-    else if (
-      isRevised(run) &&
-      run.remembered.length > (before && isRevised(before) ? before.remembered.length : 0)
-    )
-      audio.whisper('わすれないで', settings.voice);
-    else if (
-      before &&
-      before.fear < nightLimits(run).fear * 0.7 &&
-      run.fear >= nightLimits(run).fear * 0.7
-    )
-      audio.whisper('すぐ、うしろにいる', settings.voice);
+    const event = audioEvent(previous.current, run);
+    if (event) {
+      if (event.timed) {
+        audio.stopEffects();
+        audio.stopVoice();
+      }
+      audio.play(event.cue);
+      if (event.warning) audio.play(event.warning, 0.8);
+      if (event.voice) audio.whisper(event.voice, settings.voice && voiceAvailable);
+    }
     heardKey.current = key;
     previous.current = run;
-  }, [audio, playing, run, ready, paused, settings.sound, settings.voice]);
-  return { settings, update, activate, toggle, ready, paused, failed };
+  }, [audio, playing, run, ready, paused, settings.sound, settings.voice, voiceAvailable]);
+  async function read(text: string) {
+    if (!settings.sound || !voiceAvailable) return;
+    await activate();
+    audio.stopEffects();
+    audio.whisper(text, true);
+  }
+  return { settings, update, activate, toggle, ready, paused, failed, voiceAvailable, read };
 }

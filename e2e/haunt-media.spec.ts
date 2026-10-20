@@ -76,9 +76,9 @@ test('all sound cues produce bounded non-silent native audio, including alternat
   const results = await page.evaluate(async (source) => {
     const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
     try {
-      const { renderSoundCue } = await import(url);
+      const { renderSoundCue, soundCues } = await import(url);
       const results = [];
-      for (const cue of ['ring', 'steps', 'static', 'drip', 'creak', 'reveal', 'impact', 'dawn']) {
+      for (const cue of soundCues) {
         const rate = 24000;
         const context = new OfflineAudioContext(2, Math.ceil(rate * 2.8), rate);
         renderSoundCue(context, context.destination, cue);
@@ -114,6 +114,7 @@ test('all sound cues produce bounded non-silent native audio, including alternat
       URL.revokeObjectURL(url);
     }
   }, source);
+  expect(results).toHaveLength(15);
   for (const result of results) {
     expect(result.finite, result.cue).toBe(true);
     expect(result.rms, result.cue).toBeGreaterThan(0.0001);
@@ -138,7 +139,7 @@ test('sound and motion settings persist, silent play creates no audio and remain
   await page.getByRole('button', { name: '音・演出の設定' }).click();
   const dialog = page.getByRole('dialog', { name: '音・演出の設定' });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('checkbox', { name: 'ささやき声' }).uncheck();
+  await dialog.getByRole('checkbox', { name: '物語の声' }).uncheck();
   const slider = dialog.getByRole('slider', { name: '効果音の音量' });
   await slider.focus();
   await slider.press('End');

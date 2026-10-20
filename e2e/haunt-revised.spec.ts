@@ -26,7 +26,7 @@ test('new game starts at the top and keeps its feedback and controls visible on 
   expect(await page.evaluate(() => scrollY)).toBe(0);
   expect(isRevised(await state(page))).toBe(true);
   if (isMobile) {
-    await expect(page.locator('.echo-feedback')).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('region', { name: 'この館の物語' })).toBeInViewport({ ratio: 1 });
     await expect(page.locator('.echo-actions')).toBeInViewport({ ratio: 1 });
     await expect(page.getByRole('button', { name: /探索マップ・持ち物/ })).toBeInViewport({
       ratio: 1,
@@ -38,7 +38,16 @@ test('new game starts at the top and keeps its feedback and controls visible on 
   await page.getByRole('button', { name: /呪いの映像を調べる/ }).click();
   await expect(page.getByRole('button', { name: /調査済み/ })).toBeDisabled();
   await expect(page.getByRole('status')).toContainText('映像の最後');
-  if (isMobile) await expect(page.locator('.echo-feedback')).toBeInViewport({ ratio: 1 });
+  if (isMobile) {
+    await expect(page.locator('.echo-feedback')).toBeInViewport({ ratio: 1 });
+    await expect
+      .poll(async () => {
+        const feedback = await page.locator('.echo-feedback').boundingBox();
+        const dock = await page.locator('.echo-control-dock').boundingBox();
+        return feedback!.y + feedback!.height <= dock!.y - 8;
+      })
+      .toBe(true);
+  }
   const before = await state(page);
   await page.getByRole('button', { name: /手がかり帳を開く/ }).click();
   const dialog = page.getByRole('dialog', { name: '手がかり帳' });

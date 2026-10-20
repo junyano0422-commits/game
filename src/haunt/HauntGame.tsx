@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import atlasUrl from './assets/nightmares.webp';
 import { useHorrorMedia } from './useHorrorMedia';
 import { hauntConfig as config } from './config';
@@ -27,6 +27,10 @@ import { restHint } from './revised';
 import { SurvivalPanel, SurvivalTracker } from './SurvivalPanel';
 import { survivalConfig } from './survival-config';
 import { revisionConfig } from './revision-config';
+import { storyConfig, currentStory, objective } from './story';
+import { StoryPanel } from './StoryPanel';
+import { QuickItems } from './QuickItems';
+import { TravelPrompt } from './TravelPrompt';
 import type { SurvivalCommand } from './survival';
 import './haunt.css';
 function load() {
@@ -89,6 +93,10 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const [shared, setShared] = useState(false);
   const [shareNotice, setShareNotice] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
+  const app = useRef<HTMLElement>(null);
+  const dock = useRef<HTMLDivElement>(null);
+  const feedback = useRef<HTMLElement>(null);
+  const [actionError, setActionError] = useState('');
   const notesDialog = useRef<HTMLDialogElement>(null);
   const gameHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -113,6 +121,31 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
     else heading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [playing, run?.phase]);
+  useLayoutEffect(() => {
+    if (
+      !playing ||
+      !run ||
+      !isSurvival(run) ||
+      run.phase !== 'play' ||
+      run.room === 'door' ||
+      !dock.current
+    )
+      return;
+    const element = dock.current;
+    const update = () =>
+      app.current?.style.setProperty(
+        '--echo-dock-height',
+        `${element.getBoundingClientRect().height}px`,
+      );
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    update();
+    return () => observer.disconnect();
+  }, [playing, run]);
+  useEffect(() => {
+    if (playing && run && isSurvival(run) && run.turn > 0)
+      feedback.current?.scrollIntoView({ block: 'nearest' });
+  }, [run]);
   function start(seed?: number, nextMode: HauntMode = mode) {
     if ((run || initial.hasRaw) && !window.confirm('前の夜の記録を上書きして始めますか？')) return;
     void media.activate();
@@ -121,10 +154,18 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
     setNotice('');
     setSymbols([]);
     setShared(false);
+    setQuietTravel(false);
+    setActionError('');
   }
   function act(action: SurvivalCommand) {
-    setRun((prev) => (prev ? actHaunt(prev, action) : prev));
-    if (action.kind === 'move' || action.kind === 'seal') setSymbols([]);
+    if (!run) return;
+    try {
+      setRun(actHaunt(run, action));
+      setActionError('');
+      if (action.kind === 'move' || action.kind === 'seal') setSymbols([]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'この操作はできません。');
+    }
   }
   const room = config.rooms.find((r) => r.id === run?.room) ?? config.rooms[0];
   const knowledge = run ? puzzle(run) : null;
@@ -148,7 +189,8 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const share = run ? hauntShare(run, window.location.href) : '';
   return (
     <main
-      className={`echo-app ${playing ? 'echo-playing' : ''} ${run && isSurvival(run) ? 'echo-survival' : ''} ${artReady ? 'echo-illustrated' : ''} ${media.settings.impact ? 'echo-cinematic' : 'echo-restrained'}`}
+      ref={app}
+      className={`echo-app ${playing ? 'echo-playing' : ''} ${run && isSurvival(run) ? `echo-survival ${playing && run.phase === 'play' && run.room !== 'door' ? 'echo-has-dock' : ''}` : ''} ${artReady ? 'echo-illustrated' : ''} ${media.settings.impact ? 'echo-cinematic' : 'echo-restrained'}`}
       data-sound={
         media.ready && media.settings.sound
           ? 'on'
@@ -210,45 +252,10 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               消えたテレビが、ひとりでについた。
             </span>
           </div>
-          <p className="echo-intro">
-            濡れた日記。曇った鏡。鍵のかかった井戸。
-            <br />
-            三つの印を集め、夜があなたを見つける前に
-            <br />
-            最後の封印を結んでください。
-          </p>
+          <p className="echo-intro">{storyConfig.premise}</p>
           <div className="echo-home-panel">
-            <h2>振り返らずに、調べる。</h2>
-            <ol>
-              <li>映像と日記に残る、封印の順番の手がかりを集める。</li>
-              <li>部屋を移動し、三つの記号を集める。書斎の鍵で井戸へ。</li>
-              <li>二つの手がかりから順番を推理し、玄関で印を結ぶ。</li>
-            </ol>
-            <p>
-              1回の行動で1手進みます。現実の時間制限はありません。
-              <br />
-              ライトは「視線」を防ぎます。足音のときに息をひそめると、気配が遠ざかり次の移動が安全に。足音がないときや連続使用は逆効果です。
-            </p>
-            <fieldset className="echo-modes">
-              <legend>館探索モード / 今夜の猶予</legend>
-              {Object.entries(config.modes).map(([id, item]) => (
-                <label key={id}>
-                  <input
-                    type="radio"
-                    name="echo-mode"
-                    checked={mode === id}
-                    onChange={() => setMode(id as HauntMode)}
-                  />
-                  {item.label}
-                  <small>
-                    {survivalConfig.modes[id as HauntMode].turns}手 / 電池{item.battery}
-                  </small>
-                </label>
-              ))}
-            </fieldset>
-            <p className="echo-survival-intro">
-              持ち物は4枠。物資を拾い、調合し、部屋をつなぐ近道を開く。居間は追跡者の入れない拠点です。
-            </p>
+            <h2>映像の呪いをほどき、この館から出る。</h2>
+            <p className="echo-story-promise">{storyConfig.promise}</p>
             <label className="echo-sound-choice">
               <input
                 type="checkbox"
@@ -257,7 +264,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   media.update({ ...media.settings, sound: event.target.checked })
                 }
               />
-              音ありで遊ぶ <small>足音・水滴・ノイズ。対応端末ではささやき声も。</small>
+              音ありで遊ぶ <small>環境音と効果音。声の対応状況は「音・演出の設定」へ。</small>
             </label>
             {run && !isSurvival(run) && (
               <p className="echo-classic-note">
@@ -279,6 +286,39 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
             <button className={run ? 'echo-secondary' : 'echo-primary'} onClick={() => start()}>
               {run ? '新しい夜をはじめる' : '映像を再生する'}
             </button>
+            <details className="echo-start-guide">
+              <summary>遊び方・モードを選ぶ</summary>
+              <ol>
+                <li>映像と日記に残る、封印の順番の手がかりを集める。</li>
+                <li>部屋を移動し、三つの記号を集める。書斎の鍵で井戸へ。</li>
+                <li>二つの手がかりから順番を推理し、玄関で印を結ぶ。</li>
+              </ol>
+              <p>
+                1回の行動で1手進みます。現実の時間制限はありません。
+                <br />
+                ライトは「視線」を防ぎます。足音のときに息をひそめると、気配が遠ざかり次の移動が安全に。足音がないときや連続使用は逆効果です。
+              </p>
+              <fieldset className="echo-modes">
+                <legend>館探索モード / 今夜の猶予</legend>
+                {Object.entries(config.modes).map(([id, item]) => (
+                  <label key={id}>
+                    <input
+                      type="radio"
+                      name="echo-mode"
+                      checked={mode === id}
+                      onChange={() => setMode(id as HauntMode)}
+                    />
+                    {item.label}
+                    <small>
+                      {survivalConfig.modes[id as HauntMode].turns}手 / 電池{item.battery}
+                    </small>
+                  </label>
+                ))}
+              </fieldset>
+              <p className="echo-survival-intro">
+                持ち物は4枠。物資を拾い、調合し、部屋をつなぐ近道を開く。居間は追跡者の入れない拠点です。
+              </p>
+            </details>
             {(notice || saveError) && (
               <p className="echo-alert" role="alert">
                 {notice || '保存できません。画面を閉じずに遊んでください。'}
@@ -309,6 +349,11 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               中断する
             </button>
           </div>
+          {actionError && (
+            <p className="echo-alert" role="alert">
+              {actionError}
+            </p>
+          )}
           <div className={`echo-stats ${isSurvival(run) ? 'echo-survival-stats' : ''}`}>
             {isSurvival(run) && (
               <div>
@@ -378,7 +423,13 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                     key={item.id}
                     disabled={!!travelReason(run, item.id)}
                     aria-pressed={run.room === item.id}
-                    className={run.room === item.id ? 'selected' : ''}
+                    className={
+                      run.room === item.id
+                        ? 'selected'
+                        : isSurvival(run) && objective(run).next === item.id
+                          ? 'echo-next-room'
+                          : ''
+                    }
                     onClick={() => {
                       if (run.room !== item.id)
                         act(
@@ -394,17 +445,6 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   </button>
                 ))}
               </nav>
-              {isSurvival(run) && (
-                <label className="echo-quiet-travel">
-                  <input
-                    type="checkbox"
-                    checked={cautious}
-                    disabled={run.battery < 1 || limits.turns - run.turn < 2}
-                    onChange={(event) => setQuietTravel(event.target.checked)}
-                  />
-                  慎重に移動（2手・電池1・移動音を聞かせない）
-                </label>
-              )}
               <section
                 key={`scene-${run.seed}-${run.turn}`}
                 data-apparition={appearance!.id}
@@ -462,6 +502,16 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   <p>{isRevised(run) ? appearance!.text : room.description}</p>
                 </div>
               </section>
+              {isSurvival(run) && (
+                <StoryPanel
+                  run={run}
+                  canRead={media.voiceAvailable && media.settings.sound}
+                  onRead={() => {
+                    const beat = currentStory(run);
+                    void media.read(`${beat.line} ${beat.meaning}`);
+                  }}
+                />
+              )}
               {isSurvival(run) && <SurvivalTracker run={run} />}
               <section className="echo-omen" aria-label="次の危険の予告">
                 <span>
@@ -479,6 +529,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               </section>
               <section
                 className="echo-feedback"
+                ref={feedback}
                 key={`feedback-${run.seed}-${run.turn}`}
                 aria-label="今回の行動結果"
               >
@@ -490,119 +541,136 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   </details>
                 )}
               </section>
-              <div className="echo-actions">
-                {run.room !== 'door' ? (
-                  <>
-                    <button
-                      className="echo-primary"
-                      disabled={!!searched || (run.room === 'living' && !run.tv)}
-                      onClick={() => act({ kind: 'search', light: false })}
-                    >
-                      {searched ? '調査済み' : `${room.object}を調べる`}
-                      <span>{searched ? '記録は手がかり帳へ' : '1手 / 視線に注意'}</span>
-                    </button>
-                    <button
-                      className="echo-secondary"
-                      disabled={!!searched || !run.battery || (run.room === 'living' && !run.tv)}
-                      onClick={() => act({ kind: 'search', light: true })}
-                    >
-                      ライトで調べる<span>1手・電池1 / 視線を防ぐ</span>
-                    </button>
-                  </>
-                ) : (
-                  <section className="echo-seal">
-                    <h2>最後の封印</h2>
-                    {canSeal(run) ? (
-                      <>
-                        <p>
-                          {isRevised(run)
-                            ? '二つの手がかりを組み合わせ、各部屋の印を並べる。'
-                            : '映像が示した部屋の順に、そこで見つけた印を並べる。'}
-                        </p>
-                        {evidence && (
-                          <div className="echo-seal-evidence">
-                            <p>映像：{evidence.video}</p>
-                            <p>日記：{evidence.diary}</p>
-                            <p>
-                              {config.clueRooms
-                                .map(
-                                  (id) =>
-                                    `${config.rooms.find((r) => r.id === id)!.name} ${knowledge!.marks[id]}`,
-                                )
-                                .join(' ／ ')}
-                            </p>
+              <div
+                ref={dock}
+                className={`echo-control-dock ${run.room === 'door' ? 'echo-seal-mode' : ''}`}
+              >
+                {isSurvival(run) && (
+                  <TravelPrompt
+                    run={run}
+                    cautious={cautious}
+                    onCautious={setQuietTravel}
+                    onCommand={act}
+                  />
+                )}
+                {isSurvival(run) && <QuickItems run={run} onCommand={act} />}
+                <div className="echo-actions">
+                  {run.room !== 'door' ? (
+                    <>
+                      <button
+                        className="echo-primary"
+                        disabled={!!searched || (run.room === 'living' && !run.tv)}
+                        onClick={() => act({ kind: 'search', light: false })}
+                      >
+                        {searched ? '調査済み' : `${room.object}を調べる`}
+                        <span>{searched ? '記録は手がかり帳へ' : '1手 / 視線に注意'}</span>
+                      </button>
+                      <button
+                        className="echo-secondary"
+                        disabled={!!searched || !run.battery || (run.room === 'living' && !run.tv)}
+                        onClick={() => act({ kind: 'search', light: true })}
+                      >
+                        ライトで調べる<span>1手・電池1 / 視線を防ぐ</span>
+                      </button>
+                    </>
+                  ) : (
+                    <section className="echo-seal">
+                      <h2>最後の封印</h2>
+                      {canSeal(run) ? (
+                        <>
+                          <p>
+                            {isRevised(run)
+                              ? '二つの手がかりを組み合わせ、各部屋の印を並べる。'
+                              : '映像が示した部屋の順に、そこで見つけた印を並べる。'}
+                          </p>
+                          {evidence && (
+                            <div className="echo-seal-evidence">
+                              <p>映像：{evidence.video}</p>
+                              <p>日記：{evidence.diary}</p>
+                              <p>
+                                {config.clueRooms
+                                  .map(
+                                    (id) =>
+                                      `${config.rooms.find((r) => r.id === id)!.name} ${knowledge!.marks[id]}`,
+                                  )
+                                  .join(' ／ ')}
+                              </p>
+                            </div>
+                          )}
+                          <div
+                            className="echo-seal-slots"
+                            aria-label={`並べた印 ${symbols.join(' ') || 'なし'}`}
+                          >
+                            {[0, 1, 2].map((i) => (
+                              <span key={i}>{symbols[i] ?? '―'}</span>
+                            ))}
                           </div>
-                        )}
-                        <div
-                          className="echo-seal-slots"
-                          aria-label={`並べた印 ${symbols.join(' ') || 'なし'}`}
-                        >
-                          {[0, 1, 2].map((i) => (
-                            <span key={i}>{symbols[i] ?? '―'}</span>
-                          ))}
-                        </div>
-                        <div className="echo-runes" role="group" aria-label="封印の記号">
-                          {config.runes.map((mark) => (
-                            <button
-                              key={mark}
-                              disabled={symbols.length === 3}
-                              onClick={() => setSymbols((prev) => [...prev, mark])}
-                              aria-label={`印 ${mark}`}
-                            >
-                              {mark}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          className="echo-primary"
-                          disabled={symbols.length !== 3}
-                          onClick={() => act({ kind: 'seal', symbols })}
-                        >
-                          封印を結ぶ <span>1手 / 誤ると気配＋4</span>
-                        </button>
-                        <button className="echo-reset" onClick={() => setSymbols([])}>
-                          並べ直す（手数を使いません）
-                        </button>
-                      </>
-                    ) : (
-                      <p>映像の順番と、三つの印が必要です。下の手がかり帳を確認してください。</p>
-                    )}
-                  </section>
-                )}
-                <button className="echo-secondary echo-wait" onClick={() => act({ kind: 'wait' })}>
-                  息をひそめる{' '}
-                  <span>{isSurvival(run) ? survivalRestHint(run) : restHint(run)}</span>
-                </button>
-                {run.room === 'living' && !run.tv && (
-                  <button className="echo-unplug" onClick={() => act({ kind: 'plug' })}>
-                    テレビの電源を戻す<span>1手 / 予告と映像を再び見る</span>
+                          <div className="echo-runes" role="group" aria-label="封印の記号">
+                            {config.runes.map((mark) => (
+                              <button
+                                key={mark}
+                                disabled={symbols.length === 3}
+                                onClick={() => setSymbols((prev) => [...prev, mark])}
+                                aria-label={`印 ${mark}`}
+                              >
+                                {mark}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            className="echo-primary"
+                            disabled={symbols.length !== 3}
+                            onClick={() => act({ kind: 'seal', symbols })}
+                          >
+                            封印を結ぶ <span>1手 / 誤ると気配＋4</span>
+                          </button>
+                          <button className="echo-reset" onClick={() => setSymbols([])}>
+                            並べ直す（手数を使いません）
+                          </button>
+                        </>
+                      ) : (
+                        <p>映像の順番と、三つの印が必要です。下の手がかり帳を確認してください。</p>
+                      )}
+                    </section>
+                  )}
+                  <button
+                    className="echo-secondary echo-wait"
+                    onClick={() => act({ kind: 'wait' })}
+                  >
+                    息をひそめる{' '}
+                    <span>{isSurvival(run) ? survivalRestHint(run) : restHint(run)}</span>
                   </button>
-                )}
-                {run.room === 'living' && run.tv && (
-                  <button className="echo-unplug" onClick={() => act({ kind: 'unplug' })}>
-                    テレビのプラグを抜く
+                  {run.room === 'living' && !run.tv && (
+                    <button className="echo-unplug" onClick={() => act({ kind: 'plug' })}>
+                      テレビの電源を戻す<span>1手 / 予告と映像を再び見る</span>
+                    </button>
+                  )}
+                  {run.room === 'living' && run.tv && (
+                    <button className="echo-unplug" onClick={() => act({ kind: 'unplug' })}>
+                      テレビのプラグを抜く
+                      <span>
+                        {isRevised(run)
+                          ? '1手 / 基本増加なし・危険時＋5・記憶の収集を止める'
+                          : '1手 / 呪いの増加を止める代わりに、予告を失う'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+                <div
+                  className={`echo-exploration-tools ${isSurvival(run) ? 'echo-survival-tools' : ''}`}
+                >
+                  {isSurvival(run) && <SurvivalPanel run={run} onCommand={act} />}
+                  <button
+                    className="echo-notebook-button"
+                    onClick={() => notesDialog.current?.showModal()}
+                  >
+                    手がかり帳を開く{' '}
                     <span>
-                      {isRevised(run)
-                        ? '1手 / 基本増加なし・危険時＋5・記憶の収集を止める'
-                        : '1手 / 呪いの増加を止める代わりに、予告を失う'}
+                      {run.clues.length}/3
+                      {isRevised(run) ? ` ／ 記憶 ${run.remembered.length}/3` : ''}
                     </span>
                   </button>
-                )}
-              </div>
-              <div
-                className={`echo-exploration-tools ${isSurvival(run) ? 'echo-survival-tools' : ''}`}
-              >
-                {isSurvival(run) && <SurvivalPanel run={run} onCommand={act} />}
-                <button
-                  className="echo-notebook-button"
-                  onClick={() => notesDialog.current?.showModal()}
-                >
-                  手がかり帳を開く{' '}
-                  <span>
-                    {run.clues.length}/3
-                    {isRevised(run) ? ` ／ 記憶 ${run.remembered.length}/3` : ''}
-                  </span>
-                </button>
+                </div>
               </div>
               <dialog
                 ref={notesDialog}
@@ -690,6 +758,16 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               <h2 ref={heading} tabIndex={-1}>
                 {result!.title}
               </h2>
+              {isSurvival(run) && (
+                <StoryPanel
+                  run={run}
+                  canRead={media.voiceAvailable && media.settings.sound}
+                  onRead={() => {
+                    const beat = currentStory(run);
+                    void media.read(`${beat.line} ${beat.meaning}`);
+                  }}
+                />
+              )}
               <p className="echo-ending-message">{run.message}</p>
               {run.reason && <p>{run.reason}</p>}
               <p>{result!.body}</p>
@@ -778,9 +856,20 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
             checked={media.settings.voice}
             onChange={(event) => media.update({ ...media.settings, voice: event.target.checked })}
           />
-          ささやき声
+          物語の声
         </label>
-        <p>端末内に日本語音声がある場合に再生します。声がない端末でも環境音と効果音は使えます。</p>
+        <p className="echo-voice-status">
+          {media.voiceAvailable
+            ? 'この端末の日本語音声で、物語の台詞を読み上げます。'
+            : 'この端末には利用できる日本語音声がありません。台詞は字幕で表示し、効果音で遊べます。'}
+        </p>
+        <button
+          className="echo-voice-preview"
+          disabled={!media.voiceAvailable || !media.settings.sound}
+          onClick={() => void media.read('私がここにいたことだけは、忘れないで。')}
+        >
+          声を試聴する
+        </button>
         <label>
           <input
             type="checkbox"

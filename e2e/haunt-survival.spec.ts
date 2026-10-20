@@ -28,25 +28,28 @@ async function resume(page: Page, run: SurvivalRun) {
 }
 async function command(page: Page, run: SurvivalRun, cmd: SurvivalCommand) {
   if (cmd.kind === 'take' || cmd.kind === 'use' || cmd.kind === 'craft') {
-    await page.getByRole('button', { name: /探索マップ・持ち物/ }).click();
-    const dialog = page.getByRole('dialog', { name: '探索マップ・持ち物' });
+    const quick = page.getByRole('region', { name: 'すぐ使える道具' });
     if (cmd.kind === 'take')
-      await dialog.getByRole('button', { name: `${itemById(cmd.item).name}を拾う` }).click();
-    else if (cmd.kind === 'use')
-      await dialog
-        .locator('article')
-        .filter({ hasText: itemById(cmd.item).name })
-        .getByRole('button', { name: /使う/ })
+      await quick
+        .getByRole('button', { name: `${itemById(cmd.item).name}を拾う`, exact: false })
         .click();
-    else await dialog.getByRole('button', { name: /調合：/ }).click();
-    await dialog.getByRole('button', { name: '探索に戻る ×' }).click();
+    else if (cmd.kind === 'use')
+      await quick
+        .getByRole('button', { name: `${itemById(cmd.item).name}を使う`, exact: false })
+        .click();
+    else await quick.getByRole('button', { name: /閃光札を調合/ }).click();
   } else if (cmd.kind === 'move') {
-    await page
-      .getByRole('navigation', { name: '探索する部屋' })
-      .getByRole('button', {
-        name: new RegExp(hauntConfig.rooms.find((r) => r.id === cmd.room)!.name),
-      })
-      .click();
+    const guided = page.getByRole('region', { name: '今の目的' }).getByRole('button', {
+      name: new RegExp(`${hauntConfig.rooms.find((r) => r.id === cmd.room)!.name}へ進む`),
+    });
+    if (await guided.count()) await guided.click();
+    else
+      await page
+        .getByRole('navigation', { name: '探索する部屋' })
+        .getByRole('button', {
+          name: new RegExp(hauntConfig.rooms.find((r) => r.id === cmd.room)!.name),
+        })
+        .click();
   } else if (cmd.kind === 'search') {
     await page
       .getByRole('button', {
@@ -79,7 +82,11 @@ test('new exploration preserves supplies and storage without spending a turn; di
   await page.getByRole('button', { name: /探索マップ・持ち物/ }).click();
   const dialog = page.getByRole('dialog', { name: '探索マップ・持ち物' });
   await expect(dialog.getByRole('button', { name: '探索に戻る ×' })).toBeFocused();
+  await expect(dialog.getByRole('tabpanel', { name: '持ち物' })).toBeVisible();
+  await dialog.getByRole('tab', { name: 'マップ', exact: true }).click();
   await expect(dialog.getByRole('img')).toHaveAccessibleName(/現在地は居間/);
+  await dialog.getByRole('tab', { name: 'マップ', exact: true }).press('ArrowLeft');
+  await expect(dialog.getByRole('tab', { name: '持ち物', exact: true })).toBeFocused();
   await dialog.getByRole('button', { name: /予備電池を拾う/ }).click();
   await dialog
     .locator('article')
@@ -109,7 +116,20 @@ test('a full survival route crafts a flare, opens the shortcut, resumes, and sol
   for (const cmd of completed.commands) {
     run = await command(page, run, cmd);
     expect(await state(page)).toEqual(run);
-    if (run.phase === 'play') await expect(page.locator('.echo-scene')).toHaveCount(1);
+    if (run.phase === 'play') {
+      await expect(page.locator('.echo-scene')).toHaveCount(1);
+      await expect(page.getByRole('region', { name: '今の目的' })).not.toBeEmpty();
+    }
+    if (cmd.kind === 'search')
+      await expect(page.getByRole('region', { name: 'この館の物語' })).toContainText(
+        run.room === 'study'
+          ? '忘れられた少女'
+          : run.room === 'well'
+            ? '本当の願い'
+            : run.room === 'bath'
+              ? '消えない記憶'
+              : '三つの封印',
+      );
     if (cmd.kind === 'craft') {
       await page.reload();
       await page.getByRole('button', { name: '記録した夜の続きへ' }).click();
@@ -139,6 +159,7 @@ test('quiet travel pays its displayed costs and the map explicitly offers normal
   expect(await state(page)).toEqual(quiet);
   await page.getByRole('button', { name: /探索マップ・持ち物/ }).click();
   const dialog = page.getByRole('dialog', { name: '探索マップ・持ち物' });
+  await dialog.getByRole('tab', { name: 'マップ', exact: true }).click();
   await dialog.getByRole('button', { name: '居間へ（通常1手）' }).click();
   await expect(dialog).not.toBeVisible();
   expect(await state(page)).toEqual(actSurvival(quiet, { kind: 'move', room: 'living' }));
