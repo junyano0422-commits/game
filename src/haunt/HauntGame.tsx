@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import atlasUrl from './assets/nightmares.webp';
+import { useHorrorMedia } from './useHorrorMedia';
 import { hauntConfig as config } from './config';
-import type { HauntMode, Rune } from './config';
+import type { ClueRoom, HauntMode, Rune } from './config';
 import {
   actNight as actHaunt,
   canSeal,
@@ -35,6 +37,13 @@ function load() {
     };
   }
 }
+function SceneArt({ scene }: { scene: string }) {
+  return (
+    <div className={`echo-art echo-art-${scene}`} aria-hidden="true">
+      <img className="echo-atlas-image" src={atlasUrl} alt="" />
+    </div>
+  );
+}
 function Figure() {
   return (
     <svg viewBox="0 0 160 290" focusable="false">
@@ -62,6 +71,9 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const [initial] = useState(load);
   const [run, setRun] = useState(initial.run);
   const [playing, setPlaying] = useState(false);
+  const media = useHorrorMedia(run, playing);
+  const [artReady, setArtReady] = useState(false);
+  const mediaDialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<HauntMode>('quick');
   const [notice, setNotice] = useState(initial.error);
   const [saveError, setSaveError] = useState(false);
@@ -95,6 +107,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   }, [playing, run?.phase]);
   function start(seed?: number, nextMode: HauntMode = mode) {
     if ((run || initial.hasRaw) && !window.confirm('前の夜の記録を上書きして始めますか？')) return;
+    void media.activate();
     setRun(createHaunt(seed ?? Math.floor(Math.random() * 0xfffffffe) + 1, nextMode));
     setPlaying(true);
     setNotice('');
@@ -119,11 +132,42 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
       : run.clues.includes(run.room as 'bath' | 'study' | 'well'));
   const share = run ? hauntShare(run, window.location.href) : '';
   return (
-    <main className={`echo-app ${playing ? 'echo-playing' : ''}`}>
+    <main
+      className={`echo-app ${playing ? 'echo-playing' : ''} ${artReady ? 'echo-illustrated' : ''} ${media.settings.impact ? 'echo-cinematic' : 'echo-restrained'}`}
+      data-sound={
+        media.ready && media.settings.sound
+          ? 'on'
+          : media.paused && media.settings.sound
+            ? 'paused'
+            : 'off'
+      }
+    >
+      <img
+        className="echo-art-source"
+        src={atlasUrl}
+        alt=""
+        onLoad={() => setArtReady(true)}
+        onError={() => setArtReady(false)}
+      />
       <div className="echo-grain" aria-hidden="true" />
       <header className="echo-nav">
         <button onClick={onExit}>← ゲーム一覧</button>
-        <span>AN INTERACTIVE NIGHTMARE</span>
+        <div className="echo-media-toolbar">
+          <button
+            className="echo-sound-toggle"
+            onClick={media.toggle}
+            aria-pressed={media.ready && media.settings.sound}
+          >
+            {media.ready && media.settings.sound
+              ? '消音にする'
+              : media.paused && media.settings.sound
+                ? '音を再開'
+                : '音を入れる'}
+          </button>
+          <button className="echo-media-settings" onClick={() => mediaDialog.current?.showModal()}>
+            音・演出の設定
+          </button>
+        </div>
       </header>
       {!playing || !run ? (
         <section className="echo-home">
@@ -133,6 +177,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
           </h1>
           <p className="echo-subtitle">ZERO HOUR / ECHOES FROM THE WELL</p>
           <div className="echo-poster" aria-hidden="true">
+            <SceneArt scene="portrait" />
             <div className="echo-poster-well" />
             <div className="echo-poster-figure">
               <Figure />
@@ -179,6 +224,16 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 </label>
               ))}
             </fieldset>
+            <label className="echo-sound-choice">
+              <input
+                type="checkbox"
+                checked={media.settings.sound}
+                onChange={(event) =>
+                  media.update({ ...media.settings, sound: event.target.checked })
+                }
+              />
+              音ありで遊ぶ <small>足音・水滴・ノイズ。対応端末ではささやき声も。</small>
+            </label>
             {run && !isRevised(run) && (
               <p className="echo-classic-note">
                 前の記録は、その夜のルールのまま再開します。新しく始めると改善版になります。
@@ -188,6 +243,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               <button
                 className="echo-primary"
                 onClick={() => {
+                  void media.activate();
                   setPlaying(true);
                   setSymbols([]);
                 }}
@@ -212,6 +268,11 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
         </section>
       ) : (
         <>
+          {media.failed && (
+            <p className="echo-media-notice" role="status">
+              この端末では音を開始できませんでした。画像と文章で遊べます。
+            </p>
+          )}
           <div className="echo-game-title">
             <div>
               <p className="echo-eyebrow">THE NIGHT IS WATCHING YOU</p>
@@ -295,10 +356,24 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 ))}
               </nav>
               <section
+                key={`${run.seed}-${run.turn}`}
                 data-apparition={appearance!.id}
-                className={`echo-scene echo-scene-${run.room} echo-apparition-${appearance!.id} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
+                className={`echo-scene ${run.actions.at(-1)?.kind === 'search' ? 'echo-reveal' : ''} echo-scene-${run.room} echo-apparition-${appearance!.id} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
                 aria-label={`${room.name}の様子`}
               >
+                <SceneArt scene={run.room} />
+                <div className="echo-atmosphere" aria-hidden="true" />
+                <div className="echo-intruder" aria-hidden="true">
+                  <SceneArt scene="portrait" />
+                </div>
+                {run.clues.includes(run.room as ClueRoom) && (
+                  <span
+                    className="echo-found-rune"
+                    aria-label={`この部屋の印 ${knowledge!.marks[run.room as ClueRoom]}`}
+                  >
+                    {knowledge!.marks[run.room as ClueRoom]}
+                  </span>
+                )}
                 <div className="echo-scene-window" aria-hidden="true" />
                 {run.room === 'living' ? (
                   <div className={`echo-tv ${!run.tv ? 'off' : ''}`} aria-hidden="true">
@@ -550,6 +625,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               </p>
               {run.phase === 'taken' && (
                 <div className="echo-ending-figure" aria-hidden="true">
+                  <SceneArt scene="portrait" />
                   <Figure />
                 </div>
               )}
@@ -602,6 +678,53 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
           )}
         </>
       )}
+      <dialog ref={mediaDialog} className="echo-media-dialog" aria-labelledby="echo-media-title">
+        <button className="echo-notes-close" autoFocus onClick={() => mediaDialog.current?.close()}>
+          ゲームに戻る ×
+        </button>
+        <h2 id="echo-media-title">音・演出の設定</h2>
+        <label>
+          <input
+            type="checkbox"
+            checked={media.settings.sound}
+            onChange={(event) => media.update({ ...media.settings, sound: event.target.checked })}
+          />
+          環境音と効果音
+        </label>
+        <label className="echo-volume">
+          音量 <output>{media.settings.volume}%</output>
+          <input
+            type="range"
+            aria-label="効果音の音量"
+            min="0"
+            max="100"
+            value={media.settings.volume}
+            onChange={(event) =>
+              media.update({ ...media.settings, volume: Number(event.target.value) })
+            }
+          />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={media.settings.voice}
+            onChange={(event) => media.update({ ...media.settings, voice: event.target.checked })}
+          />
+          ささやき声
+        </label>
+        <p>端末内に日本語音声がある場合に再生します。声がない端末でも環境音と効果音は使えます。</p>
+        <label>
+          <input
+            type="checkbox"
+            checked={media.settings.impact}
+            onChange={(event) => media.update({ ...media.settings, impact: event.target.checked })}
+          />
+          画面の接近・揺れの演出
+        </label>
+        <p>
+          音を消しても、文章と画面の合図で危険を判断できます。別のアプリに移ると音は止まります。
+        </p>
+      </dialog>
       <footer className="echo-footer">画面の向こうと、目を合わせないで。</footer>
     </main>
   );

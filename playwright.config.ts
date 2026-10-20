@@ -22,7 +22,7 @@ export default defineConfig({
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'npm run preview',
+    command: 'node scripts/build-demo.mjs && npm run preview',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     timeout: 30_000,

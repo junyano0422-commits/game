@@ -1129,3 +1129,278 @@
     display: none;
   }
 }
+
+.echo-art-source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.echo-art {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  transform: translateY(-50%);
+}
+.echo-illustrated .echo-art {
+  display: block;
+}
+.echo-illustrated .echo-poster-well,
+.echo-illustrated .echo-poster-figure,
+.echo-illustrated .echo-scene-window,
+.echo-illustrated .echo-tv,
+.echo-illustrated .echo-mirror,
+.echo-illustrated .echo-book,
+.echo-illustrated .echo-well,
+.echo-illustrated .echo-door,
+.echo-illustrated .echo-presence {
+  display: none;
+}
+.echo-illustrated .echo-poster {
+  height: 340px;
+  border: 1px solid #5a7066;
+}
+.echo-illustrated .echo-poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 60%, #000a);
+  pointer-events: none;
+}
+.echo-illustrated .echo-poster > span {
+  z-index: 1;
+  text-shadow: 0 2px 4px #000;
+}
+.echo-atmosphere {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, #05100c00 25%, #01070499 100%);
+  pointer-events: none;
+}
+.echo-illustrated .echo-scene-caption {
+  z-index: 3;
+  background: linear-gradient(transparent, #020705db 50%);
+  padding-top: 20px;
+}
+.echo-intruder {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.echo-illustrated .echo-scene.close .echo-intruder {
+  display: block;
+  opacity: 0.83;
+}
+.echo-cinematic .echo-scene.close .echo-intruder {
+  animation: echo-arrival 0.75s ease-out both;
+}
+.echo-cinematic .echo-scene.echo-reveal > .echo-art {
+  animation: echo-reveal-shot 1.2s ease-out both;
+}
+.echo-found-rune {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 18px;
+  min-width: 40px;
+  text-align: center;
+  font-size: 30px;
+  color: #e3e9d0;
+  text-shadow:
+    0 0 10px #b3d8b2,
+    0 2px 8px #000;
+}
+.echo-media-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.echo-media-toolbar button {
+  font-size: 10px !important;
+  white-space: nowrap;
+  min-height: 40px;
+}
+.echo-nav .echo-sound-toggle[aria-pressed='true'] {
+  border-color: #9db68c;
+  background: #263a2c;
+  color: #d6e4cc;
+}
+.echo-sound-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.7;
+  border: 1px solid #526c55;
+  padding: 12px;
+  margin: 0 0 18px;
+  cursor: pointer;
+}
+.echo-sound-choice input {
+  accent-color: #a9c19d;
+}
+.echo-sound-choice small {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  color: #a4b89d;
+}
+.echo-media-dialog {
+  width: min(450px, calc(100vw - 30px));
+  max-height: 85dvh;
+  overflow-y: auto;
+  border: 1px solid #94aa7d;
+  background: #111f17;
+  color: #c8d5b9;
+  padding: 22px;
+}
+.echo-media-dialog::backdrop {
+  background: #010704db;
+  backdrop-filter: blur(4px);
+}
+.echo-media-dialog h2 {
+  font-size: 21px;
+  font-weight: 400;
+  margin: 20px 0;
+}
+.echo-media-dialog > label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  font-size: 14px;
+  margin: 12px 0;
+  cursor: pointer;
+}
+.echo-media-dialog input[type='checkbox'] {
+  width: 19px;
+  height: 19px;
+  accent-color: #a9c19d;
+}
+.echo-media-dialog > p {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #9fb392;
+}
+.echo-media-dialog .echo-volume {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.echo-media-dialog input[type='range'] {
+  width: 100%;
+  min-height: 36px;
+  accent-color: #a9c19d;
+}
+.echo-media-notice {
+  padding: 10px;
+  border: 1px solid #9d8866;
+  margin: 10px 0 !important;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.echo-illustrated .echo-ending-figure {
+  position: relative;
+  overflow: hidden;
+  height: auto;
+  aspect-ratio: 1;
+  max-width: 340px;
+  border: 1px solid #61705b;
+}
+.echo-illustrated .echo-ending-figure > svg {
+  display: none;
+}
+.echo-bad-ending .echo-ending-figure {
+  animation: echo-ending-arrival 1.4s ease-out both;
+}
+.echo-restrained .echo-scene *,
+.echo-restrained .echo-ending-figure {
+  animation: none !important;
+  transition: none !important;
+}
+@keyframes echo-arrival {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 0.83;
+    transform: scale(1);
+  }
+}
+@keyframes echo-reveal-shot {
+  from {
+    filter: brightness(0.7);
+    transform: translateY(-50%) scale(1.04);
+  }
+  to {
+    filter: brightness(1);
+    transform: translateY(-50%) scale(1);
+  }
+}
+@keyframes echo-ending-arrival {
+  from {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (max-width: 699px) {
+  .echo-playing .echo-scene {
+    height: 160px;
+  }
+  .echo-playing .echo-scene-door {
+    height: 70px;
+  }
+  .echo-playing .echo-media-toolbar {
+    gap: 4px;
+  }
+  .echo-playing .echo-media-toolbar button {
+    font-size: 9px !important;
+    padding: 5px 8px;
+  }
+  .echo-illustrated .echo-poster {
+    height: 300px;
+  }
+  .echo-found-rune {
+    font-size: 25px;
+    top: 9px;
+    right: 12px;
+  }
+}
+
+.echo-atlas-image {
+  position: absolute;
+  display: block;
+  width: 300%;
+  height: 200%;
+  max-width: none;
+  top: 0;
+  left: 0;
+}
+.echo-art-bath .echo-atlas-image {
+  left: -100%;
+}
+.echo-art-study .echo-atlas-image {
+  left: -200%;
+}
+.echo-art-well .echo-atlas-image {
+  top: -100%;
+}
+.echo-art-door .echo-atlas-image {
+  left: -100%;
+  top: -100%;
+}
+.echo-art-portrait .echo-atlas-image {
+  left: -200%;
+  top: -100%;
+}

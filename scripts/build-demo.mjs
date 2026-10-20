@@ -13,6 +13,23 @@ js = js.replace(
   /(["'`])\/legacy\/\1/g,
   JSON.stringify('https://tower-board.rosyrobin128.chatgpt.site/'),
 );
+// Bundle image assets into the downloaded edition; hosted builds keep hashed assets lazy-loaded.
+const imageReference = /(["'`])(\/assets\/[^"'`]+\.(?:webp|png|jpe?g|svg))\1/g;
+const embedded = new Map();
+for (const match of js.matchAll(imageReference)) {
+  const asset = match[2];
+  if (embedded.has(asset)) continue;
+  const extension = asset.split('.').at(-1);
+  const mime =
+    extension === 'svg'
+      ? 'image/svg+xml'
+      : extension === 'jpg'
+        ? 'image/jpeg'
+        : `image/${extension}`;
+  const bytes = await readFile(new URL(asset.slice(1), build));
+  embedded.set(asset, `data:${mime};base64,${bytes.toString('base64')}`);
+}
+js = js.replace(imageReference, (_full, _quote, asset) => JSON.stringify(embedded.get(asset)));
 html = html.replace(
   script[0],
   () => `<script type="module">${js.replaceAll('</script', '<\\/script')}</script>`,
