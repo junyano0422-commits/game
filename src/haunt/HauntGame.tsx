@@ -4,23 +4,30 @@ import { useHorrorMedia } from './useHorrorMedia';
 import { hauntConfig as config } from './config';
 import type { ClueRoom, HauntMode, Rune } from './config';
 import {
-  actNight as actHaunt,
+  actSurvival as actHaunt,
   canSeal,
-  createNight as createHaunt,
-  decodeNight as decodeHaunt,
-  encodeNight as encodeHaunt,
-  nightDiagnosis as hauntDiagnosis,
+  createSurvival as createHaunt,
+  decodeSurvival as decodeHaunt,
+  encodeSurvival as encodeHaunt,
+  survivalDiagnosis as hauntDiagnosis,
   hauntSaveKey,
-  nightShare as hauntShare,
+  survivalShare as hauntShare,
   omen,
   puzzle,
   isRevised,
   fragments,
   apparition,
-  restHint,
-} from './revised';
+  isSurvival,
+  nightLimits,
+  travelReason,
+  survivalRestHint,
+  hunterClose,
+} from './survival';
+import { restHint } from './revised';
+import { SurvivalPanel, SurvivalTracker } from './SurvivalPanel';
+import { survivalConfig } from './survival-config';
 import { revisionConfig } from './revision-config';
-import type { HauntAction } from './engine';
+import type { SurvivalCommand } from './survival';
 import './haunt.css';
 function load() {
   let raw: string | null = null;
@@ -77,6 +84,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const [mode, setMode] = useState<HauntMode>('quick');
   const [notice, setNotice] = useState(initial.error);
   const [saveError, setSaveError] = useState(false);
+  const [quietTravel, setQuietTravel] = useState(false);
   const [symbols, setSymbols] = useState<Rune[]>([]);
   const [shared, setShared] = useState(false);
   const [shareNotice, setShareNotice] = useState('');
@@ -114,13 +122,13 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
     setSymbols([]);
     setShared(false);
   }
-  function act(action: HauntAction) {
+  function act(action: SurvivalCommand) {
     setRun((prev) => (prev ? actHaunt(prev, action) : prev));
     if (action.kind === 'move' || action.kind === 'seal') setSymbols([]);
   }
   const room = config.rooms.find((r) => r.id === run?.room) ?? config.rooms[0];
   const knowledge = run ? puzzle(run) : null;
-  const limits = config.modes[run?.mode ?? mode];
+  const limits = run ? nightLimits(run) : survivalConfig.modes[mode];
   const result = run ? hauntDiagnosis(run) : null;
   const evidence = run ? fragments(run) : null;
   const appearance = run ? apparition(run) : null;
@@ -130,10 +138,17 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
     (run.room === 'living'
       ? run.orderKnown
       : run.clues.includes(run.room as 'bath' | 'study' | 'well'));
+  const cautious = !!(
+    quietTravel &&
+    run &&
+    isSurvival(run) &&
+    run.battery > 0 &&
+    limits.turns - run.turn >= 2
+  );
   const share = run ? hauntShare(run, window.location.href) : '';
   return (
     <main
-      className={`echo-app ${playing ? 'echo-playing' : ''} ${artReady ? 'echo-illustrated' : ''} ${media.settings.impact ? 'echo-cinematic' : 'echo-restrained'}`}
+      className={`echo-app ${playing ? 'echo-playing' : ''} ${run && isSurvival(run) ? 'echo-survival' : ''} ${artReady ? 'echo-illustrated' : ''} ${media.settings.impact ? 'echo-cinematic' : 'echo-restrained'}`}
       data-sound={
         media.ready && media.settings.sound
           ? 'on'
@@ -151,7 +166,14 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
       />
       <div className="echo-grain" aria-hidden="true" />
       <header className="echo-nav">
-        <button onClick={onExit}>← ゲーム一覧</button>
+        <div className="echo-nav-main">
+          <button onClick={onExit}>← ゲーム一覧</button>
+          {playing && run && isSurvival(run) && (
+            <button className="echo-mobile-pause" onClick={() => setPlaying(false)}>
+              中断する
+            </button>
+          )}
+        </div>
         <div className="echo-media-toolbar">
           <button
             className="echo-sound-toggle"
@@ -208,7 +230,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               ライトは「視線」を防ぎます。足音のときに息をひそめると、気配が遠ざかり次の移動が安全に。足音がないときや連続使用は逆効果です。
             </p>
             <fieldset className="echo-modes">
-              <legend>今夜の猶予 / 新しい夜は改善版</legend>
+              <legend>館探索モード / 今夜の猶予</legend>
               {Object.entries(config.modes).map(([id, item]) => (
                 <label key={id}>
                   <input
@@ -219,11 +241,14 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   />
                   {item.label}
                   <small>
-                    {item.turns}手 / 電池{item.battery}
+                    {survivalConfig.modes[id as HauntMode].turns}手 / 電池{item.battery}
                   </small>
                 </label>
               ))}
             </fieldset>
+            <p className="echo-survival-intro">
+              持ち物は4枠。物資を拾い、調合し、部屋をつなぐ近道を開く。居間は追跡者の入れない拠点です。
+            </p>
             <label className="echo-sound-choice">
               <input
                 type="checkbox"
@@ -234,9 +259,9 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               />
               音ありで遊ぶ <small>足音・水滴・ノイズ。対応端末ではささやき声も。</small>
             </label>
-            {run && !isRevised(run) && (
+            {run && !isSurvival(run) && (
               <p className="echo-classic-note">
-                前の記録は、その夜のルールのまま再開します。新しく始めると改善版になります。
+                前の記録は、その夜のルールのまま再開します。新しく始めると、持ち物と追跡を加えた館探索モードになります。
               </p>
             )}
             {run && (
@@ -284,7 +309,16 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               中断する
             </button>
           </div>
-          <div className="echo-stats">
+          <div className={`echo-stats ${isSurvival(run) ? 'echo-survival-stats' : ''}`}>
+            {isSurvival(run) && (
+              <div>
+                <small>体力</small>
+                <strong aria-label={`体力 ${run.health}/3`}>
+                  {'♥'.repeat(Math.max(0, run.health))}
+                  <span>{run.health}/3</span>
+                </strong>
+              </div>
+            )}
             <div>
               <small>残された猶予</small>
               <strong>
@@ -342,23 +376,39 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 {config.rooms.map((item) => (
                   <button
                     key={item.id}
-                    disabled={item.id === 'well' && !run.key}
+                    disabled={!!travelReason(run, item.id)}
                     aria-pressed={run.room === item.id}
                     className={run.room === item.id ? 'selected' : ''}
                     onClick={() => {
-                      if (run.room !== item.id) act({ kind: 'move', room: item.id });
+                      if (run.room !== item.id)
+                        act(
+                          isSurvival(run) && cautious
+                            ? { kind: 'move', room: item.id, pace: 'quiet' }
+                            : { kind: 'move', room: item.id },
+                        );
                     }}
                   >
                     <span aria-hidden="true">{item.icon}</span>
                     {item.name}
-                    {item.id === 'well' && !run.key && <small>要：鍵</small>}
+                    {travelReason(run, item.id) && <small>{travelReason(run, item.id)}</small>}
                   </button>
                 ))}
               </nav>
+              {isSurvival(run) && (
+                <label className="echo-quiet-travel">
+                  <input
+                    type="checkbox"
+                    checked={cautious}
+                    disabled={run.battery < 1 || limits.turns - run.turn < 2}
+                    onChange={(event) => setQuietTravel(event.target.checked)}
+                  />
+                  慎重に移動（2手・電池1・移動音を聞かせない）
+                </label>
+              )}
               <section
-                key={`${run.seed}-${run.turn}`}
+                key={`scene-${run.seed}-${run.turn}`}
                 data-apparition={appearance!.id}
-                className={`echo-scene ${run.actions.at(-1)?.kind === 'search' ? 'echo-reveal' : ''} echo-scene-${run.room} echo-apparition-${appearance!.id} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
+                className={`echo-scene ${run.actions.at(-1)?.kind === 'search' ? 'echo-reveal' : ''} echo-scene-${run.room} echo-apparition-${appearance!.id} ${(!isSurvival(run) || run.stun === 0) && (run.fear >= limits.fear * 0.7 || hunterClose(run)) ? 'close' : ''}`}
                 aria-label={`${room.name}の様子`}
               >
                 <SceneArt scene={run.room} />
@@ -412,6 +462,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   <p>{isRevised(run) ? appearance!.text : room.description}</p>
                 </div>
               </section>
+              {isSurvival(run) && <SurvivalTracker run={run} />}
               <section className="echo-omen" aria-label="次の危険の予告">
                 <span>
                   {run.tv ? '砂嵐からの予告' : '電源を消した部屋の気配'}
@@ -428,7 +479,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
               </section>
               <section
                 className="echo-feedback"
-                key={`${run.seed}-${run.turn}`}
+                key={`feedback-${run.seed}-${run.turn}`}
                 aria-label="今回の行動結果"
               >
                 <p role="status">{run.message.split('\n')[0]}</p>
@@ -519,7 +570,8 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   </section>
                 )}
                 <button className="echo-secondary echo-wait" onClick={() => act({ kind: 'wait' })}>
-                  息をひそめる <span>{restHint(run)}</span>
+                  息をひそめる{' '}
+                  <span>{isSurvival(run) ? survivalRestHint(run) : restHint(run)}</span>
                 </button>
                 {run.room === 'living' && !run.tv && (
                   <button className="echo-unplug" onClick={() => act({ kind: 'plug' })}>
@@ -537,15 +589,21 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   </button>
                 )}
               </div>
-              <button
-                className="echo-notebook-button"
-                onClick={() => notesDialog.current?.showModal()}
+              <div
+                className={`echo-exploration-tools ${isSurvival(run) ? 'echo-survival-tools' : ''}`}
               >
-                手がかり帳を開く{' '}
-                <span>
-                  {run.clues.length}/3{isRevised(run) ? ` ／ 記憶 ${run.remembered.length}/3` : ''}
-                </span>
-              </button>
+                {isSurvival(run) && <SurvivalPanel run={run} onCommand={act} />}
+                <button
+                  className="echo-notebook-button"
+                  onClick={() => notesDialog.current?.showModal()}
+                >
+                  手がかり帳を開く{' '}
+                  <span>
+                    {run.clues.length}/3
+                    {isRevised(run) ? ` ／ 記憶 ${run.remembered.length}/3` : ''}
+                  </span>
+                </button>
+              </div>
               <dialog
                 ref={notesDialog}
                 className="echo-notes-dialog"
@@ -642,6 +700,16 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 <span>
                   集めた印 <b>{run.clues.length}/3</b>
                 </span>
+                {isSurvival(run) && (
+                  <>
+                    <span>
+                      残り体力 <b>{run.health}/3</b>
+                    </span>
+                    <span>
+                      影との接触 <b>{run.encounters}回</b>
+                    </span>
+                  </>
+                )}
               </div>
               <button
                 className="echo-primary"

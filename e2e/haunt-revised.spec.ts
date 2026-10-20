@@ -1,13 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import {
-  actNight,
-  createNight,
-  decodeNight,
-  encodeNight,
-  isRevised,
-  omen,
-} from '../src/haunt/revised';
+import { actNight, createNight, encodeNight, isRevised, omen } from '../src/haunt/revised';
+import { decodeSurvival } from '../src/haunt/survival';
 import type { NightRun } from '../src/haunt/revised';
 import { hauntConfig as config } from '../src/haunt/config';
 import { hauntSaveKey } from '../src/haunt/engine';
@@ -20,7 +14,7 @@ async function seed(page: Page, run: NightRun) {
   );
 }
 async function state(page: Page) {
-  return decodeNight(await page.evaluate((key) => localStorage.getItem(key)!, hauntSaveKey));
+  return decodeSurvival(await page.evaluate((key) => localStorage.getItem(key)!, hauntSaveKey));
 }
 
 test('new game starts at the top and keeps its feedback and controls visible on a phone', async ({
@@ -34,6 +28,12 @@ test('new game starts at the top and keeps its feedback and controls visible on 
   if (isMobile) {
     await expect(page.locator('.echo-feedback')).toBeInViewport({ ratio: 1 });
     await expect(page.locator('.echo-actions')).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole('button', { name: /探索マップ・持ち物/ })).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(page.getByRole('button', { name: /手がかり帳を開く/ })).toBeInViewport({
+      ratio: 1,
+    });
   }
   await page.getByRole('button', { name: /呪いの映像を調べる/ }).click();
   await expect(page.getByRole('button', { name: /調査済み/ })).toBeDisabled();

@@ -3,7 +3,7 @@ import { HorrorAudio, cueForTurn, mediaSettingsKey, readMediaSettings } from './
 import type { MediaSettings } from './audio';
 import type { NightRun } from './revised';
 import { isRevised, omen } from './revised';
-import { hauntConfig } from './config';
+import { nightLimits, isSurvival, hunterClose } from './survival';
 export function useHorrorMedia(run: NightRun | null, playing: boolean) {
   const [settings, setSettings] = useState(readMediaSettings);
   const [audio] = useState(() => new HorrorAudio());
@@ -83,12 +83,21 @@ export function useHorrorMedia(run: NightRun | null, playing: boolean) {
   }
   useEffect(() => {
     if (!playing || !run || !ready || !settings.sound || paused) return;
-    if (run.phase === 'play') audio.scene(run.room, run.fear / hauntConfig.modes[run.mode].fear);
+    if (run.phase === 'play')
+      audio.scene(
+        run.room,
+        Math.max(run.fear / nightLimits(run).fear, hunterClose(run) ? 0.85 : 0),
+      );
     else audio.quiet();
-    const key = `${run.seed}-${run.mode}-${run.turn}-${run.phase}`;
+    const key = `${run.seed}-${run.mode}-${run.turn}-${run.phase}-${isSurvival(run) ? run.commands.length : run.actions.length}`;
     if (heardKey.current === key) return;
     const before = previous.current;
-    const cue = !before && run.turn > 0 && run.phase === 'play' ? 'drip' : cueForTurn(before, run);
+    const contact = before && isSurvival(before) && isSurvival(run) && run.health < before.health;
+    const cue = contact
+      ? 'impact'
+      : !before && run.turn > 0 && run.phase === 'play'
+        ? 'drip'
+        : cueForTurn(before, run);
     audio.play(cue);
     if (run.phase === 'play' && cue !== 'impact')
       audio.play(
@@ -104,8 +113,8 @@ export function useHorrorMedia(run: NightRun | null, playing: boolean) {
       audio.whisper('わすれないで', settings.voice);
     else if (
       before &&
-      before.fear < hauntConfig.modes[run.mode].fear * 0.7 &&
-      run.fear >= hauntConfig.modes[run.mode].fear * 0.7
+      before.fear < nightLimits(run).fear * 0.7 &&
+      run.fear >= nightLimits(run).fear * 0.7
     )
       audio.whisper('すぐ、うしろにいる', settings.voice);
     heardKey.current = key;
