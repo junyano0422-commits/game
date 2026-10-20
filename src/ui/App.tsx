@@ -52,9 +52,11 @@ function EffectsList({ game, effects }: { game: GameDefinition; effects: Effects
 export function App({
   onPlayRescue,
   onPlayStall,
+  onPlayHaunt,
 }: {
   onPlayRescue: () => void;
   onPlayStall: () => void;
+  onPlayHaunt: () => void;
 }) {
   const [game, setGame] = useState(() =>
     gameById(new URLSearchParams(window.location.search).get('game')),
@@ -188,6 +190,17 @@ export function App({
               <Scene theme={game.theme} />
             </section>
 
+            <button className="rescue-library-banner" onClick={onPlayHaunt}>
+              <span className="rescue-banner-icon" aria-hidden="true">
+                ◎
+              </span>
+              <span>
+                <small>NEW / 短編ホラー脱出</small>
+                <strong>零時の残響</strong>
+                <span>井戸・呪いの映像・迫る気配。三つの印を集め、夜から脱出する。</span>
+              </span>
+              <b aria-hidden="true">→</b>
+            </button>
             <button className="rescue-library-banner" onClick={onPlayStall}>
               <span className="rescue-banner-icon" aria-hidden="true">
                 🍙

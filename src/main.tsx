@@ -2,6 +2,7 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App';
 import './ui/styles.css';
+import { HauntGame } from './haunt/HauntGame';
 import { StallGame } from './stall/StallGame';
 import { RescueGame } from './rescue/RescueGame';
 
@@ -20,7 +21,9 @@ function Root() {
     setGame(next);
     window.scrollTo(0, 0);
   }
-  return game === 'night-stall' ? (
+  return game === 'zero-echo' ? (
+    <HauntGame onExit={() => navigate('')} />
+  ) : game === 'night-stall' ? (
     <StallGame onExit={() => navigate('')} />
   ) : game === 'last-elevator' ? (
     <RescueGame onExit={() => navigate('')} />
@@ -28,6 +31,7 @@ function Root() {
     <App
       onPlayRescue={() => navigate('last-elevator')}
       onPlayStall={() => navigate('night-stall')}
+      onPlayHaunt={() => navigate('zero-echo')}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 個人開発者向けの、複数のブラウザゲームを育てる基盤です。TypeScript・React・Vite を使用し、設定ファイルと共通エンジンからゲームを動かします。スマートフォンを優先し、登録なしで遊べます。
 
+- **零時の残響**：貞子をモチーフにしたオリジナル短編ホラー脱出ゲーム。`/?game=zero-echo`。井戸・呪いの映像・三つの封印。詳細は [ホラーゲーム](docs/haunt.md)
 - **夜空のおにぎり屋台**：焼き色を見て裏返し、注文どおりの味で出す料理・屋台経営ゲーム。`/?game=night-stall`。約1分の体験と3夜の成長モード。詳細は [屋台ゲーム](docs/stall.md)
 - **タワー運営ラボ**：架空のマンションで、住民・資産・備えを育てる新しい小規模ゲーム
 - **ラスト・エレベーター**：停電タワーで住民を救出する約3分のルート戦略ゲーム。`/?game=last-elevator` または一覧の新作バナーから開始
@@ -28,7 +29,7 @@ npm run preview     # build/ をポート4173で配信
 
 まとめて検証する場合は `npm run check`。Playwright はクラウド環境にある `/usr/bin/chromium` を使います。それがない環境では `npx playwright install chromium`、Linuxでシステム依存も必要なら `npx playwright install --with-deps chromium` を先に実行してください。CI は Playwright 指定の Chromium を使います。
 
-`npm run build:demo` で、ゲーム一覧を単一HTMLにまとめた `build/small-worlds-demo.html` と、救出ゲームから直接始まる `build/last-elevator.html`、屋台ゲームの `build/night-stall.html` を作れます。配信サーバーやインストールなしで試すためのファイルです。保存が制限された閲覧環境では警告が出ます。オフラインの結果共有には公開URLを含めません。原作版へのリンクは既存の公開サイトを開きます。
+`npm run build:demo` で、ゲーム一覧を単一HTMLにまとめた `build/small-worlds-demo.html` と、救出ゲームから直接始まる `build/last-elevator.html`、屋台ゲームの `build/night-stall.html`、ホラーゲームの `build/zero-echo.html` を作れます。配信サーバーやインストールなしで試すためのファイルです。保存が制限された閲覧環境では警告が出ます。オフラインの結果共有には公開URLを含めません。原作版へのリンクは既存の公開サイトを開きます。
 
 ## 構成
 
@@ -41,6 +42,7 @@ npm run preview     # build/ をポート4173で配信
 | `src/games/index.ts`       | ゲームの登録                                         |
 | `src/ui/`                  | React画面とスマートフォン対応のCSS                   |
 | `src/rescue/`              | 救出ゲームの設定・純粋なエンジン・保存・画面         |
+| `src/haunt/`               | ホラーゲームの設定・探索エンジン・保存・画面         |
 | `src/stall/`               | 屋台ゲームの設定・調理エンジン・保存・画面           |
 | `public/legacy/`           | 元ゲームのソース。ビルドでそのままコピーする         |
 | `src/core/engine.test.ts`  | 新エンジン・データ・保存のテスト                     |

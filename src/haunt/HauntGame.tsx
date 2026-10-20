@@ -1,0 +1,497 @@
+import { useEffect, useRef, useState } from 'react';
+import { hauntConfig as config } from './config';
+import type { HauntMode, Rune } from './config';
+import {
+  actHaunt,
+  canSeal,
+  createHaunt,
+  decodeHaunt,
+  encodeHaunt,
+  hauntDiagnosis,
+  hauntSaveKey,
+  hauntShare,
+  omen,
+  puzzle,
+} from './engine';
+import type { HauntAction } from './engine';
+import './haunt.css';
+function load() {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(hauntSaveKey);
+    return { run: raw ? decodeHaunt(raw) : null, error: '', hasRaw: !!raw };
+  } catch {
+    return {
+      run: null,
+      error: raw
+        ? '記録を読み込めません。新規開始まで上書きしません。'
+        : '保存を利用できません。この画面を閉じずに遊んでください。',
+      hasRaw: !!raw,
+    };
+  }
+}
+function Figure() {
+  return (
+    <svg viewBox="0 0 160 290" focusable="false">
+      <path
+        d="M60 95 Q38 132 24 218 L15 243 29 247 53 193 43 285 125 285 112 185 140 243 151 236 133 180 109 101Z"
+        fill="#d9dcd3"
+      />
+      <path
+        d="M49 63 Q43 6 83 5 Q126 10 119 68 L126 157 105 148 96 64 90 171 75 150 68 75 59 160 43 154Z"
+        fill="#090b0e"
+      />
+      <path d="M75 46 Q83 40 95 49 L92 71 74 74Z" fill="#c2c6b9" />
+      <path d="M68 18 Q85 5 102 22 L89 95 77 78Z" fill="#0c0e10" />
+      <path d="M91 57L99 55" stroke="#353d3a" strokeWidth="2" />
+      <path
+        d="M60 116L57 240M105 125L113 252M83 176L77 272"
+        stroke="#9caaa0"
+        opacity=".35"
+        fill="none"
+      />
+    </svg>
+  );
+}
+export function HauntGame({ onExit }: { onExit: () => void }) {
+  const [initial] = useState(load);
+  const [run, setRun] = useState(initial.run);
+  const [playing, setPlaying] = useState(false);
+  const [mode, setMode] = useState<HauntMode>('quick');
+  const [notice, setNotice] = useState(initial.error);
+  const [saveError, setSaveError] = useState(false);
+  const [symbols, setSymbols] = useState<Rune[]>([]);
+  const [shared, setShared] = useState(false);
+  const [shareNotice, setShareNotice] = useState('');
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const old = document.title;
+    document.title = '零時の残響 — 井戸の向こうに、誰かいる';
+    return () => {
+      document.title = old;
+    };
+  }, []);
+  useEffect(() => {
+    if (!run) return;
+    try {
+      localStorage.setItem(hauntSaveKey, encodeHaunt(run));
+      setSaveError(false);
+    } catch {
+      setSaveError(true);
+    }
+  }, [run]);
+  useEffect(() => {
+    if (playing && run?.phase !== 'play') {
+      heading.current?.focus();
+      window.scrollTo(0, 0);
+    }
+  }, [playing, run?.phase]);
+  function start(seed?: number, nextMode: HauntMode = mode) {
+    if ((run || initial.hasRaw) && !window.confirm('前の夜の記録を上書きして始めますか？')) return;
+    setRun(createHaunt(seed ?? Math.floor(Math.random() * 0xfffffffe) + 1, nextMode));
+    setPlaying(true);
+    setNotice('');
+    setSymbols([]);
+    setShared(false);
+  }
+  function act(action: HauntAction) {
+    setRun((prev) => (prev ? actHaunt(prev, action) : prev));
+    if (action.kind === 'move' || action.kind === 'seal') setSymbols([]);
+  }
+  const room = config.rooms.find((r) => r.id === run?.room) ?? config.rooms[0];
+  const knowledge = run ? puzzle(run) : null;
+  const limits = config.modes[run?.mode ?? mode];
+  const result = run ? hauntDiagnosis(run) : null;
+  const share = run ? hauntShare(run, window.location.href) : '';
+  return (
+    <main className="echo-app">
+      <div className="echo-grain" aria-hidden="true" />
+      <header className="echo-nav">
+        <button onClick={onExit}>← ゲーム一覧</button>
+        <span>AN INTERACTIVE NIGHTMARE</span>
+      </header>
+      {!playing || !run ? (
+        <section className="echo-home">
+          <p className="echo-eyebrow">その映像は、まだ終わっていない。</p>
+          <h1>
+            零時の<span>残響</span>
+          </h1>
+          <p className="echo-subtitle">ZERO HOUR / ECHOES FROM THE WELL</p>
+          <div className="echo-poster" aria-hidden="true">
+            <div className="echo-poster-well" />
+            <div className="echo-poster-figure">
+              <Figure />
+            </div>
+            <span>
+              午前零時。
+              <br />
+              消えたテレビが、ひとりでについた。
+            </span>
+          </div>
+          <p className="echo-intro">
+            濡れた日記。曇った鏡。鍵のかかった井戸。
+            <br />
+            三つの印を集め、夜があなたを見つける前に
+            <br />
+            最後の封印を結んでください。
+          </p>
+          <div className="echo-home-panel">
+            <h2>振り返らずに、調べる。</h2>
+            <ol>
+              <li>テレビの映像で、封印を結ぶ部屋の順番を知る。</li>
+              <li>部屋を移動し、三つの記号を集める。書斎の鍵で井戸へ。</li>
+              <li>玄関で、映像の順番に記号を並べて脱出する。</li>
+            </ol>
+            <p>
+              1回の行動で1手進みます。現実の時間制限はありません。
+              <br />
+              ライトは「視線」を防ぎ、息をひそめると気配が遠ざかります。連続で待つと逆効果。
+            </p>
+            <fieldset className="echo-modes">
+              <legend>今夜の猶予</legend>
+              {Object.entries(config.modes).map(([id, item]) => (
+                <label key={id}>
+                  <input
+                    type="radio"
+                    name="echo-mode"
+                    checked={mode === id}
+                    onChange={() => setMode(id as HauntMode)}
+                  />
+                  {item.label}
+                  <small>
+                    {item.turns}手 / 電池{item.battery}
+                  </small>
+                </label>
+              ))}
+            </fieldset>
+            {run && (
+              <button
+                className="echo-primary"
+                onClick={() => {
+                  setPlaying(true);
+                  setSymbols([]);
+                }}
+              >
+                {run.phase === 'play' ? '記録した夜の続きへ' : '前の夜の結末を見る'}
+              </button>
+            )}
+            <button className={run ? 'echo-secondary' : 'echo-primary'} onClick={() => start()}>
+              {run ? '新しい夜をはじめる' : '映像を再生する'}
+            </button>
+            {(notice || saveError) && (
+              <p className="echo-alert" role="alert">
+                {notice || '保存できません。画面を閉じずに遊んでください。'}
+              </p>
+            )}
+            <small className="echo-credit">
+              貞子をモチーフにした、オリジナルの非公式短編ゲーム。
+              <br />
+              音声なしで遊べます。記録はこのブラウザに保存します。
+            </small>
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="echo-game-title">
+            <div>
+              <p className="echo-eyebrow">THE NIGHT IS WATCHING YOU</p>
+              <h1>零時の残響</h1>
+            </div>
+            <button className="echo-home-button" onClick={() => setPlaying(false)}>
+              中断する
+            </button>
+          </div>
+          <div className="echo-stats">
+            <div>
+              <small>残された猶予</small>
+              <strong>
+                {Math.max(0, limits.turns - run.turn)}
+                <span>手</span>
+              </strong>
+            </div>
+            <div>
+              <small>ライトの電池</small>
+              <strong>
+                {run.battery}
+                <span>回</span>
+              </strong>
+            </div>
+            <div>
+              <small>集めた印</small>
+              <strong>
+                {run.clues.length}
+                <span>/ 3</span>
+              </strong>
+            </div>
+          </div>
+          {saveError && (
+            <p className="echo-alert" role="alert">
+              保存できません。この画面のまま遊んでください。
+            </p>
+          )}
+          {run.phase === 'play' ? (
+            <>
+              <section className="echo-pressure" aria-label="迫る気配">
+                <div>
+                  <span>
+                    {run.fear < limits.fear * 0.4
+                      ? '遠くに、水音がする。'
+                      : run.fear < limits.fear * 0.7
+                        ? '廊下に、誰かいる。'
+                        : 'すぐ後ろで、髪が擦れる。'}
+                  </span>
+                  <b>
+                    {run.fear} / {limits.fear}
+                  </b>
+                </div>
+                <div
+                  className="echo-pressure-meter"
+                  role="meter"
+                  aria-label="呪いの強さ"
+                  aria-valuenow={run.fear}
+                  aria-valuemin={0}
+                  aria-valuemax={limits.fear}
+                >
+                  <span style={{ width: `${(run.fear / limits.fear) * 100}%` }} />
+                </div>
+              </section>
+              <nav className="echo-rooms" aria-label="探索する部屋">
+                {config.rooms.map((item) => (
+                  <button
+                    key={item.id}
+                    disabled={item.id === 'well' && !run.key}
+                    aria-pressed={run.room === item.id}
+                    className={run.room === item.id ? 'selected' : ''}
+                    onClick={() => {
+                      if (run.room !== item.id) act({ kind: 'move', room: item.id });
+                    }}
+                  >
+                    <span aria-hidden="true">{item.icon}</span>
+                    {item.name}
+                    {item.id === 'well' && !run.key && <small>要：鍵</small>}
+                  </button>
+                ))}
+              </nav>
+              <section
+                className={`echo-scene echo-scene-${run.room} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
+                aria-label={`${room.name}の様子`}
+              >
+                <div className="echo-scene-window" aria-hidden="true" />
+                {run.room === 'living' ? (
+                  <div className={`echo-tv ${!run.tv ? 'off' : ''}`} aria-hidden="true">
+                    <div className="echo-tv-screen">
+                      <span>◎</span>
+                    </div>
+                    <i />
+                  </div>
+                ) : run.room === 'bath' ? (
+                  <div className="echo-mirror" aria-hidden="true">
+                    <span>{run.clues.includes('bath') ? knowledge!.marks.bath : '？'}</span>
+                  </div>
+                ) : run.room === 'study' ? (
+                  <div className="echo-book" aria-hidden="true">
+                    <span>{run.clues.includes('study') ? knowledge!.marks.study : '…'}</span>
+                  </div>
+                ) : run.room === 'well' ? (
+                  <div className="echo-well" aria-hidden="true">
+                    <span>{run.clues.includes('well') ? knowledge!.marks.well : ''}</span>
+                  </div>
+                ) : (
+                  <div className="echo-door" aria-hidden="true">
+                    <span>○　△　×</span>
+                  </div>
+                )}
+                <div
+                  className="echo-presence"
+                  style={{ opacity: Math.max(0.05, (run.fear / limits.fear) * 0.8) }}
+                  aria-hidden="true"
+                >
+                  <Figure />
+                </div>
+                <div className="echo-scene-caption">
+                  <small>ROOM / {room.name}</small>
+                  <h2>{room.object}</h2>
+                  <p>{room.description}</p>
+                </div>
+              </section>
+              <section className="echo-omen" aria-label="次の危険の予告">
+                <span>{run.tv ? '砂嵐からの予告' : 'テレビは消えている'}</span>
+                <p>
+                  {run.tv
+                    ? omen(run).text
+                    : '映像が呼ぶ呪いは止まった。次の危険は見えない。ライトと休息を頼りに進もう。'}
+                </p>
+              </section>
+              <div className="echo-actions">
+                {run.room !== 'door' ? (
+                  <>
+                    <button
+                      className="echo-primary"
+                      disabled={run.room === 'living' && !run.tv}
+                      onClick={() => act({ kind: 'search', light: false })}
+                    >
+                      {room.object}を調べる<span>1手 / 視線に注意</span>
+                    </button>
+                    <button
+                      className="echo-secondary"
+                      disabled={!run.battery || (run.room === 'living' && !run.tv)}
+                      onClick={() => act({ kind: 'search', light: true })}
+                    >
+                      ライトで調べる<span>1手・電池1 / 視線を防ぐ</span>
+                    </button>
+                  </>
+                ) : (
+                  <section className="echo-seal">
+                    <h2>最後の封印</h2>
+                    {canSeal(run) ? (
+                      <>
+                        <p>映像が示した部屋の順に、そこで見つけた印を並べる。</p>
+                        <div
+                          className="echo-seal-slots"
+                          aria-label={`並べた印 ${symbols.join(' ') || 'なし'}`}
+                        >
+                          {[0, 1, 2].map((i) => (
+                            <span key={i}>{symbols[i] ?? '―'}</span>
+                          ))}
+                        </div>
+                        <div className="echo-runes" role="group" aria-label="封印の記号">
+                          {config.runes.map((mark) => (
+                            <button
+                              key={mark}
+                              disabled={symbols.length === 3}
+                              onClick={() => setSymbols((prev) => [...prev, mark])}
+                              aria-label={`印 ${mark}`}
+                            >
+                              {mark}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          className="echo-primary"
+                          disabled={symbols.length !== 3}
+                          onClick={() => act({ kind: 'seal', symbols })}
+                        >
+                          封印を結ぶ <span>1手 / 誤ると気配＋4</span>
+                        </button>
+                        <button className="echo-reset" onClick={() => setSymbols([])}>
+                          並べ直す（手数を使いません）
+                        </button>
+                      </>
+                    ) : (
+                      <p>映像の順番と、三つの印が必要です。下の手がかり帳を確認してください。</p>
+                    )}
+                  </section>
+                )}
+                <button className="echo-secondary echo-wait" onClick={() => act({ kind: 'wait' })}>
+                  息をひそめる <span>1手 / 気配−{run.tv ? 1 : 2}・連続使用は逆効果</span>
+                </button>
+                {run.room === 'living' && !run.tv && (
+                  <button className="echo-unplug" onClick={() => act({ kind: 'plug' })}>
+                    テレビの電源を戻す<span>1手 / 予告と映像を再び見る</span>
+                  </button>
+                )}
+                {run.room === 'living' && run.tv && (
+                  <button className="echo-unplug" onClick={() => act({ kind: 'unplug' })}>
+                    テレビのプラグを抜く<span>1手 / 呪いの増加を止める代わりに、予告を失う</span>
+                  </button>
+                )}
+              </div>
+              <p className="echo-message" role="status">
+                {run.message}
+              </p>
+              <section className="echo-notes">
+                <h2>手がかり帳</h2>
+                <p>
+                  封印の順番：
+                  <b>
+                    {run.orderKnown
+                      ? knowledge!.order
+                          .map((id) => config.rooms.find((r) => r.id === id)!.name)
+                          .join(' → ')
+                      : '未確認。居間の映像を調べる。'}
+                  </b>
+                </p>
+                <div className="echo-clue-grid">
+                  {config.clueRooms.map((id) => (
+                    <div key={id}>
+                      <small>{config.rooms.find((r) => r.id === id)!.name}</small>
+                      <strong>{run.clues.includes(id) ? knowledge!.marks[id] : '？'}</strong>
+                    </div>
+                  ))}
+                </div>
+                <small>
+                  {run.key ? '鍵：入手済み' : '鍵：書斎に手がかり'} /{' '}
+                  {run.ward ? '護符：一度だけ視線を防ぐ' : '護符：なし'} /{' '}
+                  {run.tv ? 'テレビ点灯中：行動ごとに気配＋1' : 'テレビ消灯中：基本の気配増加なし'}
+                </small>
+              </section>
+              <details className="echo-history">
+                <summary>これまでの記録</summary>
+                {run.log.map((text, i) => (
+                  <p key={i}>{text}</p>
+                ))}
+              </details>
+            </>
+          ) : (
+            <section className={`echo-result ${run.phase === 'taken' ? 'echo-bad-ending' : ''}`}>
+              <p className="echo-eyebrow">
+                {run.phase === 'escaped' ? 'DAWN / 夜明け' : 'SHE FOUND YOU'}
+              </p>
+              {run.phase === 'taken' && (
+                <div className="echo-ending-figure" aria-hidden="true">
+                  <Figure />
+                </div>
+              )}
+              <h2 ref={heading} tabIndex={-1}>
+                {result!.title}
+              </h2>
+              <p className="echo-ending-message">{run.message}</p>
+              {run.reason && <p>{run.reason}</p>}
+              <p>{result!.body}</p>
+              <div className="echo-ending-stats">
+                <span>
+                  行動 <b>{run.turn}手</b>
+                </span>
+                <span>
+                  集めた印 <b>{run.clues.length}/3</b>
+                </span>
+              </div>
+              <button
+                className="echo-primary"
+                onClick={async () => {
+                  setShared(true);
+                  setShareNotice('');
+                  try {
+                    if (navigator.share) await navigator.share({ text: share });
+                    else if (navigator.clipboard) {
+                      await navigator.clipboard.writeText(share);
+                      setShareNotice('結末をコピーしました。');
+                    }
+                  } catch (error) {
+                    if (!(error instanceof DOMException && error.name === 'AbortError'))
+                      setShareNotice('下の文章を選択して共有できます。');
+                  }
+                }}
+              >
+                この夜の結末を共有する
+              </button>
+              {shared && (
+                <>
+                  <textarea aria-label="共有する結末" readOnly value={share} />
+                  <p role="status">{shareNotice}</p>
+                </>
+              )}
+              <button className="echo-secondary" onClick={() => start(run.seed, run.mode)}>
+                同じ夜を、もう一度
+              </button>
+              <button className="echo-reset" onClick={() => setPlaying(false)}>
+                タイトルに戻る
+              </button>
+            </section>
+          )}
+        </>
+      )}
+      <footer className="echo-footer">画面の向こうと、目を合わせないで。</footer>
+    </main>
+  );
+}

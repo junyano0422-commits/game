@@ -34,3 +34,7 @@ await writeFile(
   html.replace('<html lang="ja">', '<html lang="ja" data-game="night-stall">'),
 );
 console.log(`Stall game demo: ${fileURLToPath(stall)}`);
+
+const haunt = new URL('zero-echo.html', build);
+await writeFile(haunt, html.replace('<html lang="ja">', '<html lang="ja" data-game="zero-echo">'));
+console.log(`Horror game demo: ${fileURLToPath(haunt)}`);
