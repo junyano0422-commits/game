@@ -44,12 +44,13 @@ async function action(page: Page, run: HauntRun, a: HauntAction) {
 test('horror game opens from library and a complete puzzle can be solved on screen', async ({
   page,
 }) => {
+  await seed(page, createHaunt(19));
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.getByRole('button', { name: /NEW.*零時の残響/ }).click();
   await expect(page).toHaveTitle(/零時の残響/);
-  await page.getByRole('button', { name: '映像を再生する' }).click();
+  await page.getByRole('button', { name: '記録した夜の続きへ' }).click();
   let run = await state(page);
   run = await action(page, run, { kind: 'search', light: omen(run).id === 'eyes' });
   run = await action(page, run, { kind: 'unplug' });
@@ -127,5 +128,5 @@ test('broken saves are preserved and storage failure still allows exploration', 
   await page.getByRole('button', { name: '映像を再生する' }).click();
   await expect(page.getByRole('alert')).toContainText('保存できません');
   await page.getByRole('button', { name: /呪いの映像を調べる/ }).click();
-  await expect(page.getByRole('status')).toContainText('封印を結ぶ順番');
+  await expect(page.getByRole('status')).toContainText('映像の最後');
 });

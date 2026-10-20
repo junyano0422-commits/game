@@ -2,17 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import { hauntConfig as config } from './config';
 import type { HauntMode, Rune } from './config';
 import {
-  actHaunt,
+  actNight as actHaunt,
   canSeal,
-  createHaunt,
-  decodeHaunt,
-  encodeHaunt,
-  hauntDiagnosis,
+  createNight as createHaunt,
+  decodeNight as decodeHaunt,
+  encodeNight as encodeHaunt,
+  nightDiagnosis as hauntDiagnosis,
   hauntSaveKey,
-  hauntShare,
+  nightShare as hauntShare,
   omen,
   puzzle,
-} from './engine';
+  isRevised,
+  fragments,
+  apparition,
+  restHint,
+} from './revised';
+import { revisionConfig } from './revision-config';
 import type { HauntAction } from './engine';
 import './haunt.css';
 function load() {
@@ -64,6 +69,8 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const [shared, setShared] = useState(false);
   const [shareNotice, setShareNotice] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
+  const notesDialog = useRef<HTMLDialogElement>(null);
+  const gameHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const old = document.title;
     document.title = '零時の残響 — 井戸の向こうに、誰かいる';
@@ -81,10 +88,10 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
     }
   }, [run]);
   useEffect(() => {
-    if (playing && run?.phase !== 'play') {
-      heading.current?.focus();
-      window.scrollTo(0, 0);
-    }
+    if (!playing) return;
+    if (run?.phase === 'play') gameHeading.current?.focus({ preventScroll: true });
+    else heading.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
   }, [playing, run?.phase]);
   function start(seed?: number, nextMode: HauntMode = mode) {
     if ((run || initial.hasRaw) && !window.confirm('前の夜の記録を上書きして始めますか？')) return;
@@ -102,9 +109,17 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
   const knowledge = run ? puzzle(run) : null;
   const limits = config.modes[run?.mode ?? mode];
   const result = run ? hauntDiagnosis(run) : null;
+  const evidence = run ? fragments(run) : null;
+  const appearance = run ? apparition(run) : null;
+  const searched =
+    run &&
+    isRevised(run) &&
+    (run.room === 'living'
+      ? run.orderKnown
+      : run.clues.includes(run.room as 'bath' | 'study' | 'well'));
   const share = run ? hauntShare(run, window.location.href) : '';
   return (
-    <main className="echo-app">
+    <main className={`echo-app ${playing ? 'echo-playing' : ''}`}>
       <div className="echo-grain" aria-hidden="true" />
       <header className="echo-nav">
         <button onClick={onExit}>← ゲーム一覧</button>
@@ -138,17 +153,17 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
           <div className="echo-home-panel">
             <h2>振り返らずに、調べる。</h2>
             <ol>
-              <li>テレビの映像で、封印を結ぶ部屋の順番を知る。</li>
+              <li>映像と日記に残る、封印の順番の手がかりを集める。</li>
               <li>部屋を移動し、三つの記号を集める。書斎の鍵で井戸へ。</li>
-              <li>玄関で、映像の順番に記号を並べて脱出する。</li>
+              <li>二つの手がかりから順番を推理し、玄関で印を結ぶ。</li>
             </ol>
             <p>
               1回の行動で1手進みます。現実の時間制限はありません。
               <br />
-              ライトは「視線」を防ぎ、息をひそめると気配が遠ざかります。連続で待つと逆効果。
+              ライトは「視線」を防ぎます。足音のときに息をひそめると、気配が遠ざかり次の移動が安全に。足音がないときや連続使用は逆効果です。
             </p>
             <fieldset className="echo-modes">
-              <legend>今夜の猶予</legend>
+              <legend>今夜の猶予 / 新しい夜は改善版</legend>
               {Object.entries(config.modes).map(([id, item]) => (
                 <label key={id}>
                   <input
@@ -164,6 +179,11 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 </label>
               ))}
             </fieldset>
+            {run && !isRevised(run) && (
+              <p className="echo-classic-note">
+                前の記録は、その夜のルールのまま再開します。新しく始めると改善版になります。
+              </p>
+            )}
             {run && (
               <button
                 className="echo-primary"
@@ -195,7 +215,9 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
           <div className="echo-game-title">
             <div>
               <p className="echo-eyebrow">THE NIGHT IS WATCHING YOU</p>
-              <h1>零時の残響</h1>
+              <h1 ref={gameHeading} tabIndex={-1}>
+                零時の残響
+              </h1>
             </div>
             <button className="echo-home-button" onClick={() => setPlaying(false)}>
               中断する
@@ -273,7 +295,8 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 ))}
               </nav>
               <section
-                className={`echo-scene echo-scene-${run.room} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
+                data-apparition={appearance!.id}
+                className={`echo-scene echo-scene-${run.room} echo-apparition-${appearance!.id} ${run.fear >= limits.fear * 0.7 ? 'close' : ''}`}
                 aria-label={`${room.name}の様子`}
               >
                 <div className="echo-scene-window" aria-hidden="true" />
@@ -311,30 +334,50 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 <div className="echo-scene-caption">
                   <small>ROOM / {room.name}</small>
                   <h2>{room.object}</h2>
-                  <p>{room.description}</p>
+                  <p>{isRevised(run) ? appearance!.text : room.description}</p>
                 </div>
               </section>
               <section className="echo-omen" aria-label="次の危険の予告">
-                <span>{run.tv ? '砂嵐からの予告' : 'テレビは消えている'}</span>
+                <span>
+                  {run.tv ? '砂嵐からの予告' : '電源を消した部屋の気配'}
+                  {isRevised(run) ? ` / ${omen(run).title}` : ''}
+                  {isRevised(run) && run.passage ? ' / 次の移動は安全' : ''}
+                </span>
                 <p>
                   {run.tv
                     ? omen(run).text
-                    : '映像が呼ぶ呪いは止まった。次の危険は見えない。ライトと休息を頼りに進もう。'}
+                    : isRevised(run)
+                      ? revisionConfig.sensory[omen(run).id]
+                      : '映像が呼ぶ呪いは止まった。次の危険は見えない。ライトと休息を頼りに進もう。'}
                 </p>
+              </section>
+              <section
+                className="echo-feedback"
+                key={`${run.seed}-${run.turn}`}
+                aria-label="今回の行動結果"
+              >
+                <p role="status">{run.message.split('\n')[0]}</p>
+                {run.message.includes('\n') && (
+                  <details>
+                    <summary>行動結果の全文</summary>
+                    <p>{run.message}</p>
+                  </details>
+                )}
               </section>
               <div className="echo-actions">
                 {run.room !== 'door' ? (
                   <>
                     <button
                       className="echo-primary"
-                      disabled={run.room === 'living' && !run.tv}
+                      disabled={!!searched || (run.room === 'living' && !run.tv)}
                       onClick={() => act({ kind: 'search', light: false })}
                     >
-                      {room.object}を調べる<span>1手 / 視線に注意</span>
+                      {searched ? '調査済み' : `${room.object}を調べる`}
+                      <span>{searched ? '記録は手がかり帳へ' : '1手 / 視線に注意'}</span>
                     </button>
                     <button
                       className="echo-secondary"
-                      disabled={!run.battery || (run.room === 'living' && !run.tv)}
+                      disabled={!!searched || !run.battery || (run.room === 'living' && !run.tv)}
                       onClick={() => act({ kind: 'search', light: true })}
                     >
                       ライトで調べる<span>1手・電池1 / 視線を防ぐ</span>
@@ -345,7 +388,25 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                     <h2>最後の封印</h2>
                     {canSeal(run) ? (
                       <>
-                        <p>映像が示した部屋の順に、そこで見つけた印を並べる。</p>
+                        <p>
+                          {isRevised(run)
+                            ? '二つの手がかりを組み合わせ、各部屋の印を並べる。'
+                            : '映像が示した部屋の順に、そこで見つけた印を並べる。'}
+                        </p>
+                        {evidence && (
+                          <div className="echo-seal-evidence">
+                            <p>映像：{evidence.video}</p>
+                            <p>日記：{evidence.diary}</p>
+                            <p>
+                              {config.clueRooms
+                                .map(
+                                  (id) =>
+                                    `${config.rooms.find((r) => r.id === id)!.name} ${knowledge!.marks[id]}`,
+                                )
+                                .join(' ／ ')}
+                            </p>
+                          </div>
+                        )}
                         <div
                           className="echo-seal-slots"
                           aria-label={`並べた印 ${symbols.join(' ') || 'なし'}`}
@@ -383,7 +444,7 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                   </section>
                 )}
                 <button className="echo-secondary echo-wait" onClick={() => act({ kind: 'wait' })}>
-                  息をひそめる <span>1手 / 気配−{run.tv ? 1 : 2}・連続使用は逆効果</span>
+                  息をひそめる <span>{restHint(run)}</span>
                 </button>
                 {run.room === 'living' && !run.tv && (
                   <button className="echo-unplug" onClick={() => act({ kind: 'plug' })}>
@@ -392,39 +453,89 @@ export function HauntGame({ onExit }: { onExit: () => void }) {
                 )}
                 {run.room === 'living' && run.tv && (
                   <button className="echo-unplug" onClick={() => act({ kind: 'unplug' })}>
-                    テレビのプラグを抜く<span>1手 / 呪いの増加を止める代わりに、予告を失う</span>
+                    テレビのプラグを抜く
+                    <span>
+                      {isRevised(run)
+                        ? '1手 / 基本増加なし・危険時＋5・記憶の収集を止める'
+                        : '1手 / 呪いの増加を止める代わりに、予告を失う'}
+                    </span>
                   </button>
                 )}
               </div>
-              <p className="echo-message" role="status">
-                {run.message}
-              </p>
-              <section className="echo-notes">
-                <h2>手がかり帳</h2>
-                <p>
-                  封印の順番：
-                  <b>
-                    {run.orderKnown
-                      ? knowledge!.order
-                          .map((id) => config.rooms.find((r) => r.id === id)!.name)
-                          .join(' → ')
-                      : '未確認。居間の映像を調べる。'}
-                  </b>
-                </p>
-                <div className="echo-clue-grid">
-                  {config.clueRooms.map((id) => (
-                    <div key={id}>
-                      <small>{config.rooms.find((r) => r.id === id)!.name}</small>
-                      <strong>{run.clues.includes(id) ? knowledge!.marks[id] : '？'}</strong>
+              <button
+                className="echo-notebook-button"
+                onClick={() => notesDialog.current?.showModal()}
+              >
+                手がかり帳を開く{' '}
+                <span>
+                  {run.clues.length}/3{isRevised(run) ? ` ／ 記憶 ${run.remembered.length}/3` : ''}
+                </span>
+              </button>
+              <dialog
+                ref={notesDialog}
+                className="echo-notes-dialog"
+                aria-labelledby="echo-notes-title"
+              >
+                <button
+                  className="echo-notes-close"
+                  autoFocus
+                  onClick={() => notesDialog.current?.close()}
+                >
+                  探索に戻る ×
+                </button>
+                <section className="echo-notes">
+                  <h2 id="echo-notes-title">手がかり帳</h2>
+                  {evidence ? (
+                    <div className="echo-fragments">
+                      <p>
+                        映像の断片：<b>{evidence.video ?? '未確認。居間の映像を調べる。'}</b>
+                      </p>
+                      <p>
+                        日記の断片：<b>{evidence.diary ?? '未確認。書斎の日記を調べる。'}</b>
+                      </p>
+                      <p>最後の部屋を決め、残り二つを日記の前後関係で並べよう。</p>
                     </div>
-                  ))}
-                </div>
-                <small>
-                  {run.key ? '鍵：入手済み' : '鍵：書斎に手がかり'} /{' '}
-                  {run.ward ? '護符：一度だけ視線を防ぐ' : '護符：なし'} /{' '}
-                  {run.tv ? 'テレビ点灯中：行動ごとに気配＋1' : 'テレビ消灯中：基本の気配増加なし'}
-                </small>
-              </section>
+                  ) : (
+                    <p>
+                      封印の順番：
+                      <b>
+                        {run.orderKnown
+                          ? knowledge!.order
+                              .map((id) => config.rooms.find((r) => r.id === id)!.name)
+                              .join(' → ')
+                          : '未確認。居間の映像を調べる。'}
+                      </b>
+                    </p>
+                  )}
+                  <div className="echo-clue-grid">
+                    {config.clueRooms.map((id) => (
+                      <div key={id}>
+                        <small>{config.rooms.find((r) => r.id === id)!.name}</small>
+                        <strong>{run.clues.includes(id) ? knowledge!.marks[id] : '？'}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <small>
+                    {run.key ? '鍵：入手済み' : '鍵：書斎に手がかり'} /{' '}
+                    {run.ward ? '護符：一度だけ視線を防ぐ' : '護符：なし'} /{' '}
+                    {run.tv
+                      ? 'テレビ点灯中：行動ごとに気配＋1'
+                      : 'テレビ消灯中：基本の気配増加なし'}
+                  </small>
+                  {isRevised(run) && (
+                    <div className="echo-memories">
+                      <h3>映像と重なった記憶 {run.remembered.length}/3</h3>
+                      {run.remembered.length ? (
+                        run.remembered.map((id) => <p key={id}>{revisionConfig.memories[id]}</p>)
+                      ) : (
+                        <p>
+                          テレビをつけたまま各部屋を初めて調べると、映像と同じ記憶が見える。呪いの増加と引き換えに、もう一つの結末へつながる。
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              </dialog>
               <details className="echo-history">
                 <summary>これまでの記録</summary>
                 {run.log.map((text, i) => (

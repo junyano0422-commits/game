@@ -830,3 +830,302 @@
     font-size: 12px;
   }
 }
+
+.echo-feedback {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left: 2px solid #9bb789;
+  background: #17291f;
+}
+.echo-feedback > p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #d2dcc9;
+}
+.echo-feedback details {
+  margin-top: 6px;
+}
+.echo-feedback summary {
+  font-size: 11px;
+  color: #b4c5a6;
+  cursor: pointer;
+  min-height: 30px;
+  line-height: 30px;
+}
+.echo-feedback details p {
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-line;
+  padding-top: 10px;
+}
+.echo-notebook-button {
+  min-height: 48px;
+  border: 1px solid #8ba07a;
+  width: 100%;
+  background: #233528;
+  color: #d5dfca;
+  padding: 12px;
+  margin-top: 12px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px !important;
+}
+.echo-notebook-button span {
+  font-size: 11px;
+  color: #aac09c;
+}
+.echo-notes-dialog {
+  width: min(580px, calc(100vw - 30px));
+  max-height: 85dvh;
+  padding: 18px;
+  background: #0c1912;
+  color: #d2d6ca;
+  border: 1px solid #89a076;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.echo-notes-dialog::backdrop {
+  background: #000b;
+  backdrop-filter: blur(3px);
+}
+.echo-notes-dialog .echo-notes {
+  margin-top: 12px;
+}
+.echo-notes-close {
+  display: block;
+  margin-left: auto;
+  min-height: 44px;
+  padding: 10px;
+  background: transparent;
+  color: #c3d4b3;
+  border: 1px solid #708a5f;
+}
+.echo-seal-evidence {
+  padding: 10px;
+  border-left: 2px solid #8da776;
+  background: #1e3022;
+}
+.echo-seal-evidence p {
+  margin: 3px 0;
+  font-size: 12px;
+}
+.echo-memories {
+  margin-top: 20px;
+  border-top: 1px solid #536d45;
+  padding-top: 16px;
+}
+.echo-memories h3 {
+  font-size: 14px;
+  font-weight: 400;
+}
+.echo-memories p {
+  font-size: 12px;
+  line-height: 1.9;
+}
+.echo-classic-note {
+  font-size: 11px;
+  color: #d2b99d;
+  line-height: 1.9;
+  margin-bottom: 16px !important;
+}
+.echo-apparition-screen .echo-presence {
+  right: auto;
+  left: 47%;
+  top: 33px;
+  height: 90px;
+  filter: blur(0.5px);
+  opacity: 0.65 !important;
+}
+.echo-apparition-mirror .echo-presence {
+  right: auto;
+  left: 45%;
+  top: 22px;
+  height: 155px;
+  opacity: 0.7 !important;
+}
+.echo-apparition-mirror .echo-mirror {
+  background:
+    linear-gradient(70deg, transparent 48%, #d4dccc44 49% 50%, transparent 51%),
+    radial-gradient(#819b7b77, #253f2b);
+}
+.echo-apparition-passing .echo-presence {
+  left: 12%;
+  right: auto;
+  top: 12px;
+  height: 140px;
+  opacity: 0.4 !important;
+}
+.echo-apparition-writing .echo-well::after {
+  content: '忘れないで';
+  position: absolute;
+  bottom: -15px;
+  left: 18px;
+  font-size: 11px;
+  color: #c2caa6;
+  letter-spacing: 5px;
+}
+.echo-apparition-memory .echo-presence {
+  transform: scaleX(-1);
+  right: 27%;
+  opacity: 0.6 !important;
+}
+@media (max-width: 699px) {
+  .echo-playing {
+    padding-top: 10px;
+  }
+  .echo-playing .echo-nav {
+    margin-bottom: 10px;
+  }
+  .echo-playing .echo-nav > span {
+    display: none;
+  }
+  .echo-playing .echo-nav button {
+    min-height: 34px;
+    padding: 5px 10px;
+  }
+  .echo-playing .echo-game-title {
+    margin-bottom: 7px;
+  }
+  .echo-playing .echo-game-title h1 {
+    font-size: 22px;
+    line-height: 1.4;
+  }
+  .echo-playing .echo-game-title .echo-eyebrow {
+    display: none;
+  }
+  .echo-playing .echo-home-button {
+    min-height: 36px;
+  }
+  .echo-playing .echo-stats {
+    padding: 6px 0;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .echo-playing .echo-stats strong {
+    font-size: 22px;
+    line-height: 1.3;
+  }
+  .echo-playing .echo-pressure-meter {
+    margin: 5px 0 9px;
+  }
+  .echo-playing .echo-rooms {
+    margin-bottom: 8px;
+  }
+  .echo-playing .echo-rooms button {
+    min-height: 48px;
+  }
+  .echo-playing .echo-rooms button > span {
+    font-size: 14px;
+  }
+  .echo-playing .echo-scene {
+    height: 140px;
+  }
+  .echo-playing .echo-scene-caption {
+    padding: 20px 12px 9px;
+  }
+  .echo-playing .echo-scene-caption h2 {
+    font-size: 17px;
+    margin: 0;
+  }
+  .echo-playing .echo-scene-caption small {
+    display: none;
+  }
+  .echo-playing .echo-scene-caption p {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .echo-playing .echo-tv {
+    top: 6px;
+    transform: translateX(-50%) scale(0.7);
+    transform-origin: top center;
+  }
+  .echo-playing .echo-mirror {
+    top: 0;
+    transform: translateX(-50%) scale(0.6);
+    transform-origin: top center;
+  }
+  .echo-playing .echo-well {
+    top: 15px;
+    transform: translateX(-50%) scale(0.7);
+    transform-origin: top center;
+  }
+  .echo-playing .echo-book {
+    top: 15px;
+    transform: translateX(-50%) scale(0.7) rotate(-8deg);
+  }
+  .echo-playing .echo-door {
+    height: 120px;
+  }
+  .echo-playing .echo-presence {
+    height: 110px;
+    top: 0;
+  }
+  .echo-playing .echo-apparition-screen .echo-presence {
+    height: 65px;
+    top: 8px;
+  }
+  .echo-playing .echo-apparition-mirror .echo-presence {
+    height: 90px;
+  }
+  .echo-playing .echo-omen {
+    padding: 7px 0;
+    margin-bottom: 7px;
+  }
+  .echo-playing .echo-omen p {
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 2px;
+  }
+  .echo-playing .echo-feedback {
+    margin: 7px 0;
+    padding: 8px 11px;
+  }
+  .echo-playing .echo-feedback > p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .echo-playing .echo-actions {
+    gap: 7px;
+  }
+  .echo-playing .echo-primary,
+  .echo-playing .echo-secondary {
+    min-height: 47px;
+    padding: 9px 6px;
+    font-size: 12px;
+  }
+  .echo-playing .echo-unplug {
+    min-height: 42px;
+  }
+  .echo-playing .echo-notebook-button {
+    min-height: 44px;
+    padding: 9px 12px;
+    margin-top: 8px;
+  }
+  .echo-playing .echo-seal {
+    padding: 12px;
+  }
+  .echo-playing .echo-seal h2 {
+    font-size: 17px;
+  }
+  .echo-playing .echo-seal-slots {
+    margin: 12px 0;
+  }
+  .echo-playing .echo-seal-slots span {
+    height: 36px;
+    font-size: 24px;
+  }
+  .echo-playing .echo-runes {
+    margin-bottom: 10px;
+  }
+  .echo-playing .echo-runes button {
+    min-height: 44px;
+  }
+  .echo-playing .echo-scene-door {
+    height: 70px;
+  }
+  .echo-playing .echo-scene-door .echo-scene-caption p {
+    display: none;
+  }
+}
